@@ -596,3 +596,24 @@ buildSolubilityChart();
 buildActivitySeries();
 buildKaChart();
 buildRedoxChart();
+
+// Side chart buttons
+document.getElementById("btnIons").addEventListener("click", () => openPanel("ionsOverlay"));
+document.getElementById("btnSolubility").addEventListener("click", () => openPanel("solubilityOverlay"));
+document.getElementById("btnActivity").addEventListener("click", () => openPanel("activityOverlay"));
+document.getElementById("btnKa").addEventListener("click", () => openPanel("kaOverlay"));
+document.getElementById("btnRedox").addEventListener("click", () => openPanel("redoxOverlay"));
+
+// Trend buttons
+document.getElementById("btnTrendEneg").addEventListener("click", () => openTrend("electronegativity"));
+document.getElementById("btnTrendIE").addEventListener("click", () => openTrend("ionization"));
+document.getElementById("btnTrendAR").addEventListener("click", () => openTrend("atomic-radius"));
+document.getElementById("btnTrendIR").addEventListener("click", () => openTrend("ionic-radius"));
+
+// Panel close buttons
+document.getElementById("closeTrend").addEventListener("click", () => closePanel("trendOverlay"));
+document.getElementById("closeIons").addEventListener("click", () => closePanel("ionsOverlay"));
+document.getElementById("closeSolubility").addEventListener("click", () => closePanel("solubilityOverlay"));
+document.getElementById("closeActivity").addEventListener("click", () => closePanel("activityOverlay"));
+document.getElementById("closeKa").addEventListener("click", () => closePanel("kaOverlay"));
+document.getElementById("closeRedox").addEventListener("click", () => closePanel("redoxOverlay"));

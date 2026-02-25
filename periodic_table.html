@@ -99,8 +99,8 @@
     color:rgba(255,255,255,0.5);line-height:1;margin-top:1px;}
   .light .el .mass{color:rgba(0,0,0,0.45);}
   .el .ion-charge{font-family:'Atkinson Hyperlegible','Inter',sans-serif;
-    font-size:0.47rem;font-weight:700;color:rgba(255,255,255,0.9);
-    line-height:1;margin-top:1px;}
+    font-size:0.58rem;font-weight:700;color:rgba(255,255,255,0.95);
+    line-height:1.1;margin-top:2px;letter-spacing:0.01em;}
   .light .el .ion-charge{color:rgba(0,0,0,0.7);}
 
   /* Category colors */
@@ -311,21 +311,21 @@
   <!-- SIDE PANEL -->
   <div class="side-panel">
     <div class="side-label">Charts</div>
-    <button class="side-btn" onclick="openPanel('ionsOverlay')">
+    <button class="side-btn" id="btnIons">
       <span class="si">⚡</span>Common Ions
     </button>
-    <button class="side-btn" onclick="openPanel('solubilityOverlay')">
+    <button class="side-btn" id="btnSolubility">
       <span class="si">💧</span>Solubility
     </button>
     <div class="side-divider"></div>
-    <button class="side-btn" onclick="openPanel('activityOverlay')">
+    <button class="side-btn" id="btnActivity">
       <span class="si">🔋</span>Activity Series
     </button>
-    <button class="side-btn" onclick="openPanel('kaOverlay')">
+    <button class="side-btn" id="btnKa">
       <span class="si">🧪</span>Ka Values
     </button>
     <div class="side-divider"></div>
-    <button class="side-btn" onclick="openPanel('redoxOverlay')">
+    <button class="side-btn" id="btnRedox">
       <span class="si">⚗️</span>Std Reduc. Pot.
     </button>
   </div>
@@ -339,10 +339,10 @@
 <!-- TRENDS BAR -->
 <div class="trends-bar">
   <span class="trends-label">Periodic Trends:</span>
-  <button class="trend-btn" onclick="openTrend('electronegativity')">🔵 Electronegativity</button>
-  <button class="trend-btn" onclick="openTrend('ionization')">⚡ First Ionization Energy</button>
-  <button class="trend-btn" onclick="openTrend('atomic-radius')">⭕ Atomic Radius</button>
-  <button class="trend-btn" onclick="openTrend('ionic-radius')">🔴 Ionic Radius</button>
+  <button class="trend-btn" id="btnTrendEneg">🔵 Electronegativity</button>
+  <button class="trend-btn" id="btnTrendIE">⚡ First Ionization Energy</button>
+  <button class="trend-btn" id="btnTrendAR">⭕ Atomic Radius</button>
+  <button class="trend-btn" id="btnTrendIR">🔴 Ionic Radius</button>
 </div>
 
 <!-- ELEMENT MODAL -->
@@ -410,7 +410,7 @@
   <div class="panel-box">
     <div class="panel-header">
       <h2 id="trendTitle">Trend</h2>
-      <button class="panel-close" onclick="closePanel('trendOverlay')">✕</button>
+      <button class="panel-close" id="closeTrend">✕</button>
     </div>
     <div class="panel-body">
       <div class="trend-grid" id="trendGrid"></div>
@@ -428,7 +428,7 @@
   <div class="panel-box">
     <div class="panel-header">
       <h2>⚡ Common Ion Charges</h2>
-      <button class="panel-close" onclick="closePanel('ionsOverlay')">✕</button>
+      <button class="panel-close" id="closeIons">✕</button>
     </div>
     <div class="panel-body" id="ionsBody"></div>
   </div>
@@ -439,7 +439,7 @@
   <div class="panel-box" style="width:820px">
     <div class="panel-header">
       <h2>💧 Solubility Chart</h2>
-      <button class="panel-close" onclick="closePanel('solubilityOverlay')">✕</button>
+      <button class="panel-close" id="closeSolubility">✕</button>
     </div>
     <div class="panel-body" id="solubilityBody"></div>
   </div>
@@ -450,7 +450,7 @@
   <div class="panel-box" style="width:580px">
     <div class="panel-header">
       <h2>🔋 Activity Series of Metals</h2>
-      <button class="panel-close" onclick="closePanel('activityOverlay')">✕</button>
+      <button class="panel-close" id="closeActivity">✕</button>
     </div>
     <div class="panel-body" id="activityBody"></div>
   </div>
@@ -461,7 +461,7 @@
   <div class="panel-box" style="width:700px">
     <div class="panel-header">
       <h2>🧪 Acid Dissociation Constants (Ka)</h2>
-      <button class="panel-close" onclick="closePanel('kaOverlay')">✕</button>
+      <button class="panel-close" id="closeKa">✕</button>
     </div>
     <div class="panel-body" id="kaBody"></div>
   </div>
@@ -472,7 +472,7 @@
   <div class="panel-box" style="width:820px">
     <div class="panel-header">
       <h2>⚗️ Standard Reduction Potentials (25°C)</h2>
-      <button class="panel-close" onclick="closePanel('redoxOverlay')">✕</button>
+      <button class="panel-close" id="closeRedox">✕</button>
     </div>
     <div class="panel-body" id="redoxBody"></div>
   </div>
