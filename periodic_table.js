@@ -518,7 +518,8 @@ document.getElementById("themeToggle").addEventListener("click", () => {
     isDark ? "🌙 Dark Mode" : "☀️ Light Mode";
 });
 
-// ─── CLOSE WINDOW ────────────────────────────────────────────────document.getElementById("closeBtn").addEventListener("click", () => {
+// ─── CLOSE WINDOW ────────────────────────────────────────────────
+document.getElementById("closeBtn").addEventListener("click", () => {
   window.close();
 });
 
