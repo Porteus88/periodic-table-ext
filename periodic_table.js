@@ -333,82 +333,69 @@ function openTrend(key) {
 
 // ─── COMMON IONS CHART ────────────────────────────────────────────
 function buildIonsChart() {
-  const cations = [
-    {name:"Hydrogen",      sym:"H⁺",       charge:"+1"},
-    {name:"Lithium",       sym:"Li⁺",      charge:"+1"},
-    {name:"Sodium",        sym:"Na⁺",      charge:"+1"},
-    {name:"Potassium",     sym:"K⁺",       charge:"+1"},
-    {name:"Rubidium",      sym:"Rb⁺",      charge:"+1"},
-    {name:"Cesium",        sym:"Cs⁺",      charge:"+1"},
-    {name:"Silver",        sym:"Ag⁺",      charge:"+1"},
-    {name:"Copper(I)",     sym:"Cu⁺",      charge:"+1"},
-    {name:"Mercury(I)",    sym:"Hg₂²⁺",    charge:"+1 each"},
-    {name:"Ammonium",      sym:"NH₄⁺",     charge:"+1 (polyatomic)"},
-    {name:"Magnesium",     sym:"Mg²⁺",     charge:"+2"},
-    {name:"Calcium",       sym:"Ca²⁺",     charge:"+2"},
-    {name:"Strontium",     sym:"Sr²⁺",     charge:"+2"},
-    {name:"Barium",        sym:"Ba²⁺",     charge:"+2"},
-    {name:"Zinc",          sym:"Zn²⁺",     charge:"+2"},
-    {name:"Cadmium",       sym:"Cd²⁺",     charge:"+2"},
-    {name:"Copper(II)",    sym:"Cu²⁺",     charge:"+2"},
-    {name:"Iron(II)",      sym:"Fe²⁺",     charge:"+2"},
-    {name:"Cobalt(II)",    sym:"Co²⁺",     charge:"+2"},
-    {name:"Nickel(II)",    sym:"Ni²⁺",     charge:"+2"},
-    {name:"Manganese(II)", sym:"Mn²⁺",     charge:"+2"},
-    {name:"Lead(II)",      sym:"Pb²⁺",     charge:"+2"},
-    {name:"Tin(II)",       sym:"Sn²⁺",     charge:"+2"},
-    {name:"Mercury(II)",   sym:"Hg²⁺",     charge:"+2"},
-    {name:"Aluminum",      sym:"Al³⁺",     charge:"+3"},
-    {name:"Iron(III)",     sym:"Fe³⁺",     charge:"+3"},
-    {name:"Chromium(III)", sym:"Cr³⁺",     charge:"+3"},
-    {name:"Cobalt(III)",   sym:"Co³⁺",     charge:"+3"},
-    {name:"Bismuth(III)",  sym:"Bi³⁺",     charge:"+3"},
-    {name:"Titanium(IV)",  sym:"Ti⁴⁺",     charge:"+4"},
-    {name:"Lead(IV)",      sym:"Pb⁴⁺",     charge:"+4"},
-    {name:"Tin(IV)",       sym:"Sn⁴⁺",     charge:"+4"},
-  ];
-  const anions = [
-    {name:"Hydride",          sym:"H⁻",        charge:"−1"},
-    {name:"Fluoride",         sym:"F⁻",        charge:"−1"},
-    {name:"Chloride",         sym:"Cl⁻",       charge:"−1"},
-    {name:"Bromide",          sym:"Br⁻",       charge:"−1"},
-    {name:"Iodide",           sym:"I⁻",        charge:"−1"},
-    {name:"Hydroxide",        sym:"OH⁻",       charge:"−1 (polyatomic)"},
-    {name:"Nitrate",          sym:"NO₃⁻",      charge:"−1 (polyatomic)"},
-    {name:"Nitrite",          sym:"NO₂⁻",      charge:"−1 (polyatomic)"},
-    {name:"Bicarbonate",      sym:"HCO₃⁻",     charge:"−1 (polyatomic)"},
-    {name:"Acetate",          sym:"CH₃COO⁻",   charge:"−1 (polyatomic)"},
-    {name:"Permanganate",     sym:"MnO₄⁻",     charge:"−1 (polyatomic)"},
-    {name:"Cyanide",          sym:"CN⁻",       charge:"−1 (polyatomic)"},
-    {name:"Chlorate",         sym:"ClO₃⁻",     charge:"−1 (polyatomic)"},
-    {name:"Perchlorate",      sym:"ClO₄⁻",     charge:"−1 (polyatomic)"},
-    {name:"Hypochlorite",     sym:"ClO⁻",      charge:"−1 (polyatomic)"},
-    {name:"Oxide",            sym:"O²⁻",       charge:"−2"},
-    {name:"Sulfide",          sym:"S²⁻",       charge:"−2"},
-    {name:"Sulfate",          sym:"SO₄²⁻",     charge:"−2 (polyatomic)"},
-    {name:"Sulfite",          sym:"SO₃²⁻",     charge:"−2 (polyatomic)"},
-    {name:"Carbonate",        sym:"CO₃²⁻",     charge:"−2 (polyatomic)"},
-    {name:"Chromate",         sym:"CrO₄²⁻",    charge:"−2 (polyatomic)"},
-    {name:"Dichromate",       sym:"Cr₂O₇²⁻",   charge:"−2 (polyatomic)"},
-    {name:"Oxalate",          sym:"C₂O₄²⁻",    charge:"−2 (polyatomic)"},
-    {name:"Thiosulfate",      sym:"S₂O₃²⁻",    charge:"−2 (polyatomic)"},
-    {name:"Nitride",          sym:"N³⁻",       charge:"−3"},
-    {name:"Phosphide",        sym:"P³⁻",       charge:"−3"},
-    {name:"Phosphate",        sym:"PO₄³⁻",     charge:"−3 (polyatomic)"},
-    {name:"Phosphite",        sym:"PO₃³⁻",     charge:"−3 (polyatomic)"},
-    {name:"Arsenate",         sym:"AsO₄³⁻",    charge:"−3 (polyatomic)"},
+  // Cations: left column / right column pairs (matching data booklet two-col layout)
+  const cationPairs = [
+    [{sym:"Al³⁺", name:"Aluminum"},            {sym:"Pb⁴⁺", name:"Lead(IV), plumbic"}],
+    [{sym:"NH₄⁺", name:"Ammonium"},             {sym:"Li⁺",  name:"Lithium"}],
+    [{sym:"Ba²⁺", name:"Barium"},               {sym:"Mg²⁺", name:"Magnesium"}],
+    [{sym:"Ca²⁺", name:"Calcium"},              {sym:"Mn²⁺", name:"Manganese(II), manganous"}],
+    [{sym:"Cr²⁺", name:"Chromium(II), chromous"},{sym:"Mn⁴⁺", name:"Manganese(IV)"}],
+    [{sym:"Cr³⁺", name:"Chromium(III), chromic"},{sym:"Hg₂²⁺",name:"Mercury(I)*, mercurous"}],
+    [{sym:"Cu⁺",  name:"Copper(I)*, cuprous"},  {sym:"Hg²⁺", name:"Mercury(II), mercuric"}],
+    [{sym:"Cu²⁺", name:"Copper(II), cupric"},   {sym:"K⁺",   name:"Potassium"}],
+    [{sym:"H⁺",   name:"Hydrogen"},             {sym:"Ag⁺",  name:"Silver"}],
+    [{sym:"H₃O⁺", name:"Hydronium"},            {sym:"Na⁺",  name:"Sodium"}],
+    [{sym:"Fe²⁺", name:"Iron(II)*, ferrous"},   {sym:"Sn²⁺", name:"Tin(II)*, stannous"}],
+    [{sym:"Fe³⁺", name:"Iron(III), ferric"},    {sym:"Sn⁴⁺", name:"Tin(IV), stannic"}],
+    [{sym:"Pb²⁺", name:"Lead(II), plumbous"},   {sym:"Zn²⁺", name:"Zinc"}],
   ];
 
-  const makeSection = (title, color, rows) => `
-    <h3 style="color:${color};font-size:0.8rem;letter-spacing:1.5px;text-transform:uppercase;margin:14px 0 6px;font-family:'Space Mono',monospace;">${title}</h3>
-    <table class="ref-table">
-      <thead><tr><th>Name</th><th>Symbol</th><th>Charge</th></tr></thead>
-      <tbody>${rows.map(r=>`<tr><td>${r.name}</td><td style="font-weight:700;font-size:0.9rem">${r.sym}</td><td class="${r.charge.startsWith("−")?"neg":"pos"}">${r.charge}</td></tr>`).join("")}</tbody>
-    </table>`;
+  // Anions: left column / right column pairs
+  const anionPairs = [
+    [{sym:"Br⁻",      name:"Bromide"},                  {sym:"OH⁻",     name:"Hydroxide"}],
+    [{sym:"CO₃²⁻",    name:"Carbonate"},                {sym:"ClO⁻",    name:"Hypochlorite"}],
+    [{sym:"ClO₃⁻",    name:"Chlorate"},                 {sym:"I⁻",      name:"Iodide"}],
+    [{sym:"Cl⁻",      name:"Chloride"},                 {sym:"HPO₄²⁻",  name:"Monohydrogen phosphate"}],
+    [{sym:"ClO₂⁻",    name:"Chlorite"},                 {sym:"NO₃⁻",    name:"Nitrate"}],
+    [{sym:"CrO₄²⁻",   name:"Chromate"},                 {sym:"NO₂⁻",    name:"Nitrite"}],
+    [{sym:"CN⁻",      name:"Cyanide"},                  {sym:"C₂O₄²⁻",  name:"Oxalate"}],
+    [{sym:"Cr₂O₇²⁻",  name:"Dichromate"},               {sym:"O²⁻",     name:"Oxide**"}],
+    [{sym:"H₂PO₄⁻",   name:"Dihydrogen phosphate"},     {sym:"ClO₄⁻",   name:"Perchlorate"}],
+    [{sym:"CH₃COO⁻",  name:"Ethanoate, acetate"},        {sym:"MnO₄⁻",   name:"Permanganate"}],
+    [{sym:"F⁻",       name:"Fluoride"},                 {sym:"PO₄³⁻",   name:"Phosphate"}],
+    [{sym:"HCO₃⁻",    name:"Hydrogen carbonate, bicarbonate"},{sym:"SO₄²⁻", name:"Sulphate"}],
+    [{sym:"HC₂O₄⁻",   name:"Hydrogen oxalate, binoxalate"},{sym:"S²⁻",  name:"Sulphide"}],
+    [{sym:"HSO₄⁻",    name:"Hydrogen sulphate, bisulphate"},{sym:"SO₃²⁻",name:"Sulphite"}],
+    [{sym:"HS⁻",      name:"Hydrogen sulphide, bisulphide"},{sym:"SCN⁻", name:"Thiocyanate"}],
+    [{sym:"HSO₃⁻",    name:"Hydrogen sulphite, bisulphite"},{sym:"",     name:""}],
+  ];
 
-  document.getElementById("ionsBody").innerHTML =
-    makeSection("Cations (+)", "var(--c-alkali)", cations) +
-    makeSection("Anions (−)", "var(--accent)", anions);
+  const makeEntry = (item, cls) => item.sym
+    ? `<div class="ions-entry">
+        <span class="ions-sym ${cls}">${item.sym}</span>
+        <span class="ions-name">${item.name}</span>
+       </div>`
+    : `<div class="ions-entry" style="visibility:hidden"><span class="ions-sym">&nbsp;</span></div>`;
+
+  const makeTwoCol = (pairs, cls) => {
+    let left="", right="";
+    pairs.forEach(p=>{
+      left  += makeEntry(p[0], cls);
+      right += makeEntry(p[1]||{}, cls);
+    });
+    return `<div class="ions-two-col"><div class="ions-col">${left}</div><div class="ions-col">${right}</div></div>`;
+  };
+
+  document.getElementById("ionsBody").innerHTML = `
+    <div class="ions-title">
+      <h3>Names, Formulae, and Charges of Some Common Ions</h3>
+      <div class="ions-note">* Aqueous solutions are readily oxidized by air. &nbsp; ** Not stable in aqueous solutions.</div>
+    </div>
+    <div class="ions-section-header">Positive Ions (Cations)</div>
+    ${makeTwoCol(cationPairs, "pos-ion")}
+    <div class="ions-section-header" style="margin-top:18px;">Negative Ions (Anions)</div>
+    ${makeTwoCol(anionPairs, "neg-ion")}
+  `;
 }
 
 // ─── SOLUBILITY CHART ─────────────────────────────────────────────
@@ -484,98 +471,209 @@ function buildActivitySeries() {
 
 // ─── Ka CHART ─────────────────────────────────────────────────────
 function buildKaChart() {
+  // Format: {name, acid, arrow, base, ka, strong}
+  // arrow: "→" for strong (one-way), "⇌" for weak (equilibrium)
   const acids=[
-    {name:"Hydroiodic acid",         formula:"HI",           ka:"~10⁹",       pka:"~−9",    strength:"Strong"},
-    {name:"Hydrobromic acid",        formula:"HBr",          ka:"~10⁹",       pka:"~−9",    strength:"Strong"},
-    {name:"Perchloric acid",         formula:"HClO₄",        ka:"~10¹⁰",      pka:"~−10",   strength:"Strong"},
-    {name:"Hydrochloric acid",       formula:"HCl",          ka:"~10⁷",       pka:"~−7",    strength:"Strong"},
-    {name:"Sulfuric acid (1st)",     formula:"H₂SO₄",        ka:"~10³",       pka:"~−3",    strength:"Strong"},
-    {name:"Nitric acid",             formula:"HNO₃",         ka:"~25",        pka:"~−1.4",  strength:"Strong"},
-    {name:"Hydronium ion",           formula:"H₃O⁺",         ka:"1",          pka:"0.00",   strength:"Reference", ref:true},
-    {name:"Sulfuric acid (2nd)",     formula:"HSO₄⁻",        ka:"1.2×10⁻²",  pka:"1.92",   strength:"Weak"},
-    {name:"Phosphoric acid (1st)",   formula:"H₃PO₄",        ka:"7.5×10⁻³",  pka:"2.12",   strength:"Weak"},
-    {name:"Hydrofluoric acid",       formula:"HF",           ka:"6.8×10⁻⁴",  pka:"3.17",   strength:"Weak"},
-    {name:"Nitrous acid",            formula:"HNO₂",         ka:"4.5×10⁻⁴",  pka:"3.35",   strength:"Weak"},
-    {name:"Formic acid",             formula:"HCOOH",        ka:"1.8×10⁻⁴",  pka:"3.74",   strength:"Weak"},
-    {name:"Benzoic acid",            formula:"C₆H₅COOH",     ka:"6.5×10⁻⁵",  pka:"4.19",   strength:"Weak"},
-    {name:"Acetic acid",             formula:"CH₃COOH",      ka:"1.8×10⁻⁵",  pka:"4.74",   strength:"Weak"},
-    {name:"Carbonic acid (1st)",     formula:"H₂CO₃",        ka:"4.3×10⁻⁷",  pka:"6.37",   strength:"Weak"},
-    {name:"Hydrogen sulfide (1st)",  formula:"H₂S",          ka:"9.5×10⁻⁸",  pka:"7.02",   strength:"Weak"},
-    {name:"Dihydrogen phosphate",    formula:"H₂PO₄⁻",       ka:"6.2×10⁻⁸",  pka:"7.21",   strength:"Weak"},
-    {name:"Hypochlorous acid",       formula:"HClO",         ka:"3.0×10⁻⁸",  pka:"7.52",   strength:"Weak"},
-    {name:"Ammonium ion",            formula:"NH₄⁺",         ka:"5.6×10⁻¹⁰", pka:"9.25",   strength:"Weak"},
-    {name:"Hydrocyanic acid",        formula:"HCN",          ka:"4.9×10⁻¹⁰", pka:"9.31",   strength:"Weak"},
-    {name:"Boric acid",              formula:"H₃BO₃",        ka:"5.8×10⁻¹⁰", pka:"9.24",   strength:"Weak"},
-    {name:"Carbonic acid (2nd)",     formula:"HCO₃⁻",        ka:"4.7×10⁻¹¹", pka:"10.33",  strength:"Weak"},
-    {name:"Monohydrogen phosphate",  formula:"HPO₄²⁻",       ka:"2.2×10⁻¹³", pka:"12.66",  strength:"Weak"},
-    {name:"Hydrogen sulfide (2nd)",  formula:"HS⁻",          ka:"1.2×10⁻¹⁵", pka:"14.92",  strength:"Weak"},
-    {name:"Water",                   formula:"H₂O",          ka:"1.8×10⁻¹⁶", pka:"15.74",  strength:"Very Weak"},
-    {name:"Phosphoric acid (3rd)",   formula:"PO₄³⁻",        ka:"~10⁻¹⁸",    pka:"~18",    strength:"Very Weak"},
+    {name:"Perchloric",          acid:"HClO₄",         arrow:"→", base:"H⁺ + ClO₄⁻",        ka:"very large", strong:true},
+    {name:"Hydriodic",           acid:"HI",             arrow:"→", base:"H⁺ + I⁻",            ka:"very large", strong:true},
+    {name:"Hydrobromic",         acid:"HBr",            arrow:"→", base:"H⁺ + Br⁻",           ka:"very large", strong:true},
+    {name:"Hydrochloric",        acid:"HCl",            arrow:"→", base:"H⁺ + Cl⁻",           ka:"very large", strong:true},
+    {name:"Nitric",              acid:"HNO₃",           arrow:"→", base:"H⁺ + NO₃⁻",          ka:"very large", strong:true},
+    {name:"Sulphuric",           acid:"H₂SO₄",          arrow:"→", base:"H⁺ + HSO₄⁻",         ka:"very large", strong:true},
+    {name:"Hydronium Ion",       acid:"H₃O⁺",           arrow:"⇌", base:"H⁺ + H₂O",           ka:"1.0",        ref:true},
+    {name:"Iodic",               acid:"HIO₃",           arrow:"⇌", base:"H⁺ + IO₃⁻",          ka:"1.7×10⁻¹"},
+    {name:"Oxalic",              acid:"H₂C₂O₄",         arrow:"⇌", base:"H⁺ + HC₂O₄⁻",        ka:"5.9×10⁻²"},
+    {name:"Sulphurous (SO₂+H₂O)",acid:"H₂SO₃",          arrow:"⇌", base:"H⁺ + HSO₃⁻",         ka:"1.5×10⁻²"},
+    {name:"Hydrogen sulphate ion",acid:"HSO₄⁻",          arrow:"⇌", base:"H⁺ + SO₄²⁻",         ka:"1.2×10⁻²"},
+    {name:"Phosphoric",          acid:"H₃PO₄",          arrow:"⇌", base:"H⁺ + H₂PO₄⁻",        ka:"7.5×10⁻³"},
+    {name:"Citric",              acid:"H₃C₆H₅O₇",       arrow:"⇌", base:"H⁺ + H₂C₆H₅O₇⁻",     ka:"7.1×10⁻⁴"},
+    {name:"Nitrous",             acid:"HNO₂",           arrow:"⇌", base:"H⁺ + NO₂⁻",          ka:"4.6×10⁻⁴"},
+    {name:"Hydrofluoric",        acid:"HF",             arrow:"⇌", base:"H⁺ + F⁻",            ka:"3.5×10⁻⁴"},
+    {name:"Methanoic, formic",   acid:"HCOOH",          arrow:"⇌", base:"H⁺ + HCOO⁻",         ka:"1.8×10⁻⁴"},
+    {name:"Benzoic",             acid:"C₆H₅COOH",       arrow:"⇌", base:"H⁺ + C₆H₅COO⁻",      ka:"6.5×10⁻⁵"},
+    {name:"Hydrogen oxalate ion",acid:"HC₂O₄⁻",         arrow:"⇌", base:"H⁺ + C₂O₄²⁻",        ka:"6.4×10⁻⁵"},
+    {name:"Ethanoic, acetic",    acid:"CH₃COOH",        arrow:"⇌", base:"H⁺ + CH₃COO⁻",       ka:"1.8×10⁻⁵"},
+    {name:"Dihydrogen citrate ion",acid:"H₂C₆H₅O₇⁻",   arrow:"⇌", base:"H⁺ + HC₆H₅O₇²⁻",    ka:"1.7×10⁻⁵"},
+    {name:"Carbonic (CO₂+H₂O)", acid:"H₂CO₃",          arrow:"⇌", base:"H⁺ + HCO₃⁻",         ka:"4.3×10⁻⁷"},
+    {name:"Monohydrogen citrate ion",acid:"HC₆H₅O₇²⁻", arrow:"⇌", base:"H⁺ + C₆H₅O₇³⁻",     ka:"4.1×10⁻⁷"},
+    {name:"Hydrogen sulphite ion",acid:"HSO₃⁻",         arrow:"⇌", base:"H⁺ + SO₃²⁻",         ka:"1.0×10⁻⁷"},
+    {name:"Hydrogen sulphide",   acid:"H₂S",            arrow:"⇌", base:"H⁺ + HS⁻",           ka:"9.1×10⁻⁸"},
+    {name:"Dihydrogen phosphate ion",acid:"H₂PO₄⁻",     arrow:"⇌", base:"H⁺ + HPO₄²⁻",        ka:"6.2×10⁻⁸"},
+    {name:"Boric",               acid:"H₃BO₃",          arrow:"⇌", base:"H⁺ + H₂BO₃⁻",        ka:"7.3×10⁻¹⁰"},
+    {name:"Ammonium ion",        acid:"NH₄⁺",           arrow:"⇌", base:"H⁺ + NH₃",           ka:"5.6×10⁻¹⁰"},
+    {name:"Hydrocyanic",         acid:"HCN",            arrow:"⇌", base:"H⁺ + CN⁻",           ka:"4.9×10⁻¹⁰"},
+    {name:"Phenol",              acid:"C₆H₅OH",         arrow:"⇌", base:"H⁺ + C₆H₅O⁻",        ka:"1.3×10⁻¹⁰"},
+    {name:"Hydrogen carbonate ion",acid:"HCO₃⁻",        arrow:"⇌", base:"H⁺ + CO₃²⁻",         ka:"5.6×10⁻¹¹"},
+    {name:"Hydrogen peroxide",   acid:"H₂O₂",           arrow:"⇌", base:"H⁺ + HO₂⁻",          ka:"2.4×10⁻¹²"},
+    {name:"Monohydrogen phosphate ion",acid:"HPO₄²⁻",   arrow:"⇌", base:"H⁺ + PO₄³⁻",         ka:"2.2×10⁻¹³"},
+    {name:"Water",               acid:"H₂O",            arrow:"⇌", base:"H⁺ + OH⁻",           ka:"1.0×10⁻¹⁴"},
+    {name:"Hydroxide ion",       acid:"OH⁻",            arrow:"←", base:"H⁺ + O²⁻",           ka:"very small", vweak:true},
+    {name:"Ammonia",             acid:"NH₃",            arrow:"←", base:"H⁺ + NH₂⁻",          ka:"very small", vweak:true},
   ];
-  const sc=s=>{if(s==="Strong")return"#ef4444";if(s==="Reference")return"var(--accent)";if(s==="Very Weak")return"var(--text-muted)";return"#22c55e";};
-  let html=`<table class="ref-table"><thead><tr><th>Acid</th><th>Formula</th><th>Ka</th><th>pKa</th><th>Type</th></tr></thead><tbody>`;
+
+  let rows="";
   acids.forEach(a=>{
-    const rs=a.ref?`style="background:color-mix(in srgb,var(--accent) 10%,var(--surface2));font-style:italic"`:"";
-    html+=`<tr ${rs}><td>${a.name}</td><td style="font-weight:700">${a.formula}</td>
-      <td style="font-family:'Space Mono',monospace;font-size:0.72rem">${a.ka}</td>
-      <td style="font-family:'Space Mono',monospace;font-size:0.72rem">${a.pka}</td>
-      <td style="color:${sc(a.strength)};font-weight:700;font-size:0.72rem">${a.strength}</td></tr>`;
+    let rowCls="";
+    let kaCls="";
+    if(a.strong){rowCls=" class=\"ka-strong-row\""; kaCls="";}
+    if(a.ref){rowCls=" class=\"ka-ref-row\"";}
+    if(a.vweak){rowCls=" class=\"ka-strong-row\" style=\"opacity:0.7\"";}
+    rows+=`<tr${rowCls}>
+      <td class="ka-name">${a.name}</td>
+      <td class="ka-acid">${a.acid}</td>
+      <td class="ka-arrow">${a.arrow}</td>
+      <td class="ka-base">${a.base}</td>
+      <td class="ka-val">${a.ka}</td>
+    </tr>`;
   });
-  html+=`</tbody></table><p class="trend-note" style="margin-top:12px">Ka is the acid dissociation constant. Larger Ka (smaller pKa) = stronger acid. Strong acids are essentially 100% dissociated. Weak acids establish equilibrium. All values at 25°C.</p>`;
-  document.getElementById("kaBody").innerHTML=html;
+
+  document.getElementById("kaBody").innerHTML=`
+    <div class="ka-title">
+      <h3>Relative Strengths of Brønsted-Lowry Acids and Bases</h3>
+      <p>in aqueous solution at room temperature</p>
+    </div>
+    <div class="ka-wrap">
+      <div class="ka-strength-bar left">
+        <span class="ka-bar-arrow">▲</span>
+        <div class="ka-bar-label">STRONG</div>
+        <div class="ka-bar-line"></div>
+        <div class="ka-bar-label">STRENGTH OF ACID</div>
+        <div class="ka-bar-line"></div>
+        <div class="ka-bar-label">WEAK</div>
+        <span class="ka-bar-arrow">▼</span>
+      </div>
+      <div class="ka-strength-bar right">
+        <span class="ka-bar-arrow">▼</span>
+        <div class="ka-bar-label">WEAK</div>
+        <div class="ka-bar-line"></div>
+        <div class="ka-bar-label">STRENGTH OF BASE</div>
+        <div class="ka-bar-line"></div>
+        <div class="ka-bar-label">STRONG</div>
+        <span class="ka-bar-arrow">▲</span>
+      </div>
+      <table class="ka-table">
+        <thead>
+          <tr>
+            <th>Name of Acid</th>
+            <th>Acid</th>
+            <th style="text-align:center"></th>
+            <th>Base</th>
+            <th class="ka-th-ka">K<sub>a</sub></th>
+          </tr>
+        </thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>
+  `;
 }
 
 // ─── STANDARD REDUCTION POTENTIALS ────────────────────────────────
 function buildRedoxChart() {
+  // Format matching data booklet: Oxidizing Agent + ne⁻ ⇌ Reducing Agent  E°
   const halfCells=[
-    {half:"F₂ + 2e⁻ → 2F⁻",                        e:"+2.87"},
-    {half:"S₂O₈²⁻ + 2e⁻ → 2SO₄²⁻",                 e:"+2.01"},
-    {half:"H₂O₂ + 2H⁺ + 2e⁻ → 2H₂O",               e:"+1.77"},
-    {half:"MnO₄⁻ + 8H⁺ + 5e⁻ → Mn²⁺ + 4H₂O",       e:"+1.51"},
-    {half:"PbO₂ + 4H⁺ + 2e⁻ → Pb²⁺ + 2H₂O",         e:"+1.46"},
-    {half:"Cl₂ + 2e⁻ → 2Cl⁻",                        e:"+1.36"},
-    {half:"Cr₂O₇²⁻ + 14H⁺ + 6e⁻ → 2Cr³⁺ + 7H₂O",   e:"+1.33"},
-    {half:"O₂ + 4H⁺ + 4e⁻ → 2H₂O",                  e:"+1.23"},
-    {half:"Br₂ + 2e⁻ → 2Br⁻",                        e:"+1.07"},
-    {half:"NO₃⁻ + 4H⁺ + 3e⁻ → NO + 2H₂O",           e:"+0.96"},
-    {half:"Hg²⁺ + 2e⁻ → Hg",                          e:"+0.85"},
-    {half:"Ag⁺ + e⁻ → Ag",                             e:"+0.80"},
-    {half:"Fe³⁺ + e⁻ → Fe²⁺",                         e:"+0.77"},
-    {half:"O₂ + 2H⁺ + 2e⁻ → H₂O₂",                  e:"+0.68"},
-    {half:"MnO₄⁻ + 2H₂O + 3e⁻ → MnO₂ + 4OH⁻",       e:"+0.59"},
-    {half:"I₂ + 2e⁻ → 2I⁻",                           e:"+0.54"},
-    {half:"O₂ + 2H₂O + 4e⁻ → 4OH⁻",                  e:"+0.40"},
-    {half:"Cu²⁺ + 2e⁻ → Cu",                           e:"+0.34"},
-    {half:"Cu²⁺ + e⁻ → Cu⁺",                           e:"+0.16"},
-    {half:"Sn⁴⁺ + 2e⁻ → Sn²⁺",                        e:"+0.15"},
-    {half:"S + 2H⁺ + 2e⁻ → H₂S",                      e:"+0.14"},
-    {half:"2H⁺ + 2e⁻ → H₂",                           e:"0.00", ref:true},
-    {half:"Pb²⁺ + 2e⁻ → Pb",                           e:"−0.13"},
-    {half:"Sn²⁺ + 2e⁻ → Sn",                          e:"−0.14"},
-    {half:"Ni²⁺ + 2e⁻ → Ni",                          e:"−0.26"},
-    {half:"Co²⁺ + 2e⁻ → Co",                          e:"−0.28"},
-    {half:"Fe²⁺ + 2e⁻ → Fe",                          e:"−0.44"},
-    {half:"Cr³⁺ + 3e⁻ → Cr",                          e:"−0.74"},
-    {half:"Zn²⁺ + 2e⁻ → Zn",                          e:"−0.76"},
-    {half:"2H₂O + 2e⁻ → H₂ + 2OH⁻",                  e:"−0.83"},
-    {half:"Mn²⁺ + 2e⁻ → Mn",                          e:"−1.18"},
-    {half:"Al³⁺ + 3e⁻ → Al",                          e:"−1.66"},
-    {half:"Mg²⁺ + 2e⁻ → Mg",                          e:"−2.37"},
-    {half:"Na⁺ + e⁻ → Na",                             e:"−2.71"},
-    {half:"Ca²⁺ + 2e⁻ → Ca",                          e:"−2.87"},
-    {half:"K⁺ + e⁻ → K",                              e:"−2.93"},
-    {half:"Li⁺ + e⁻ → Li",                             e:"−3.05"},
+    {ox:"F₂(g) + 2e⁻",            red:"2F⁻",                   e:"+2.87"},
+    {ox:"S₂O₈²⁻ + 2e⁻",           red:"2SO₄²⁻",                e:"+2.01"},
+    {ox:"H₂O₂ + 2H⁺ + 2e⁻",       red:"2H₂O",                  e:"+1.78"},
+    {ox:"MnO₄⁻ + 8H⁺ + 5e⁻",      red:"Mn²⁺ + 4H₂O",           e:"+1.51"},
+    {ox:"Au³⁺ + 3e⁻",              red:"Au(s)",                  e:"+1.50"},
+    {ox:"BrO₃⁻ + 6H⁺ + 5e⁻",      red:"½Br₂(l) + 3H₂O",       e:"+1.48"},
+    {ox:"ClO₄⁻ + 8H⁺ + 8e⁻",      red:"Cl⁻ + 4H₂O",            e:"+1.39"},
+    {ox:"Cl₂(g) + 2e⁻",           red:"2Cl⁻",                   e:"+1.36"},
+    {ox:"Cr₂O₇²⁻ + 14H⁺ + 6e⁻",   red:"2Cr³⁺ + 7H₂O",          e:"+1.23"},
+    {ox:"½O₂(g) + 2H⁺ + 2e⁻",     red:"H₂O",                   e:"+1.23"},
+    {ox:"MnO₂(s) + 4H⁺ + 2e⁻",    red:"Mn²⁺ + 2H₂O",           e:"+1.22"},
+    {ox:"IO₃⁻ + 6H⁺ + 5e⁻",       red:"½I₂(s) + 3H₂O",         e:"+1.20"},
+    {ox:"Br₂(l) + 2e⁻",           red:"2Br⁻",                   e:"+1.09"},
+    {ox:"AuCl₄⁻ + 3e⁻",           red:"Au(s) + 4Cl⁻",           e:"+1.00"},
+    {ox:"NO₃⁻ + 4H⁺ + 3e⁻",       red:"NO(g) + 2H₂O",          e:"+0.96"},
+    {ox:"Hg₂²⁺ + 2e⁻",            red:"Hg(l)",                  e:"+0.85"},
+    {ox:"Ag⁺ + e⁻",               red:"Ag(s)",                  e:"+0.80"},
+    {ox:"½Hg₂²⁺ + e⁻",            red:"Hg(l)",                  e:"+0.80"},
+    {ox:"Fe³⁺ + e⁻",              red:"Fe²⁺",                   e:"+0.77"},
+    {ox:"O₂(g) + 2H⁺ + 2e⁻",      red:"H₂O₂",                  e:"+0.70"},
+    {ox:"MnO₄⁻ + 2H₂O + 3e⁻",     red:"MnO₂ + 4OH⁻",           e:"+0.60"},
+    {ox:"I₂(s) + 2e⁻",            red:"2I⁻",                    e:"+0.54"},
+    {ox:"Cu⁺ + e⁻",               red:"Cu(s)",                  e:"+0.52"},
+    {ox:"H₂SO₃ + 4H⁺ + 4e⁻",      red:"S(s) + 3H₂O",           e:"+0.45"},
+    {ox:"Cu²⁺ + 2e⁻",             red:"Cu(s)",                  e:"+0.34"},
+    {ox:"SO₄²⁻ + 4H⁺ + 2e⁻",      red:"H₂SO₃ + H₂O",           e:"+0.17"},
+    {ox:"Cu²⁺ + e⁻",              red:"Cu⁺",                    e:"+0.15"},
+    {ox:"Sn⁴⁺ + 2e⁻",             red:"Sn²⁺",                   e:"+0.15"},
+    {ox:"S(s) + 2H⁺ + 2e⁻",       red:"H₂S(g)",                 e:"+0.14"},
+    {ox:"2H⁺ + 2e⁻",              red:"H₂(g)",                  e:"0.00",  ref:true},
+    {ox:"Pb²⁺ + 2e⁻",             red:"Pb(s)",                  e:"−0.13"},
+    {ox:"Sn²⁺ + 2e⁻",             red:"Sn(s)",                  e:"−0.14"},
+    {ox:"Ni²⁺ + 2e⁻",             red:"Ni(s)",                  e:"−0.26"},
+    {ox:"Co²⁺ + 2e⁻",             red:"Co(s)",                  e:"−0.28"},
+    {ox:"Fe²⁺ + 2e⁻",             red:"Fe(s)",                  e:"−0.45"},
+    {ox:"Ag₂S(s) + 2e⁻",          red:"2Ag(s) + S²⁻",           e:"−0.69"},
+    {ox:"Cr³⁺ + 3e⁻",             red:"Cr(s)",                  e:"−0.74"},
+    {ox:"Zn²⁺ + 2e⁻",             red:"Zn(s)",                  e:"−0.76"},
+    {ox:"2H₂O + 2e⁻",             red:"H₂(g) + 2OH⁻",           e:"−0.83"},
+    {ox:"Mn²⁺ + 2e⁻",             red:"Mn(s)",                  e:"−1.19"},
+    {ox:"Al³⁺ + 3e⁻",             red:"Al(s)",                  e:"−1.66"},
+    {ox:"Mg²⁺ + 2e⁻",             red:"Mg(s)",                  e:"−2.37"},
+    {ox:"Na⁺ + e⁻",               red:"Na(s)",                  e:"−2.71"},
+    {ox:"Ca²⁺ + 2e⁻",             red:"Ca(s)",                  e:"−2.87"},
+    {ox:"Sr²⁺ + 2e⁻",             red:"Sr(s)",                  e:"−2.89"},
+    {ox:"Ba²⁺ + 2e⁻",             red:"Ba(s)",                  e:"−2.91"},
+    {ox:"K⁺ + e⁻",                red:"K(s)",                   e:"−2.93"},
+    {ox:"Rb⁺ + e⁻",               red:"Rb(s)",                  e:"−2.98"},
+    {ox:"Cs⁺ + e⁻",               red:"Cs(s)",                  e:"−3.03"},
+    {ox:"Li⁺ + e⁻",               red:"Li(s)",                  e:"−3.04"},
   ];
-  let html=`<table class="ref-table"><thead><tr><th>Half-Cell Reaction (Reduction)</th><th>E° (V)</th></tr></thead><tbody>`;
+
+  let rows="";
   halfCells.forEach(hc=>{
     const val=parseFloat(hc.e);
-    const cls=hc.ref?"": (val>0?"pos":"neg");
-    const rs=hc.ref?`style="background:color-mix(in srgb,var(--accent) 10%,var(--surface2));font-style:italic"`:"";
-    html+=`<tr ${rs}><td style="font-family:'Space Mono',monospace;font-size:0.72rem">${hc.half}</td>
-      <td class="${cls}" style="font-weight:700;font-family:'Space Mono',monospace">${hc.e}</td></tr>`;
+    let eCls = hc.ref ? "rd-ref" : (val>0 ? "rd-pos" : "rd-neg");
+    let trCls = hc.ref ? " class=\"rd-ref-row\"" : "";
+    rows+=`<tr${trCls}>
+      <td class="rd-ox">${hc.ox}</td>
+      <td class="rd-arrow">⇌</td>
+      <td class="rd-red">${hc.red}</td>
+      <td class="rd-e ${eCls}">${hc.e}</td>
+    </tr>`;
   });
-  html+=`</tbody></table><p class="trend-note" style="margin-top:12px">Standard reduction potentials at 25°C, 1 atm, 1 M. E°cell = E°cathode − E°anode. Positive E°cell → spontaneous. Higher E° = stronger oxidizing agent (favors being reduced).</p>`;
-  document.getElementById("redoxBody").innerHTML=html;
+
+  document.getElementById("redoxBody").innerHTML=`
+    <div class="redox-title">
+      <h3>Standard Reduction Potentials of Half-Cells</h3>
+      <p>Ionic concentrations are at 1M in water at 25°C</p>
+    </div>
+    <div class="redox-wrap">
+      <div class="redox-strength-bar left">
+        <span class="redox-bar-arrow">▲</span>
+        <div class="redox-bar-label">STRONG</div>
+        <div class="redox-bar-line"></div>
+        <div class="redox-bar-label">STRENGTH OF OXIDIZING AGENT</div>
+        <div class="redox-bar-line"></div>
+        <div class="redox-bar-label">WEAK</div>
+        <span class="redox-bar-arrow">▼</span>
+      </div>
+      <div class="redox-strength-bar right">
+        <span class="redox-bar-arrow">▼</span>
+        <div class="redox-bar-label">WEAK</div>
+        <div class="redox-bar-line"></div>
+        <div class="redox-bar-label">STRENGTH OF REDUCING AGENT</div>
+        <div class="redox-bar-line"></div>
+        <div class="redox-bar-label">STRONG</div>
+        <span class="redox-bar-arrow">▲</span>
+      </div>
+      <table class="redox-table">
+        <thead>
+          <tr>
+            <th style="text-align:right">Oxidizing Agents</th>
+            <th style="text-align:center;width:30px"></th>
+            <th>Reducing Agents</th>
+            <th style="text-align:right">E° (Volts)</th>
+          </tr>
+        </thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>
+    <p class="trend-note" style="margin-top:10px">E°cell = E°cathode − E°anode. Positive E°cell → spontaneous reaction. Species with higher E° are stronger oxidizing agents.</p>
+  `;
 }
 
 // ─── THEME ────────────────────────────────────────────────────────
