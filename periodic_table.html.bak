@@ -87,12 +87,11 @@
     align-items:center;justify-content:center;user-select:none;}
   .el:hover{transform:scale(3.0);z-index:50;
     border-color:rgba(255,255,255,0.8);
-    box-shadow:0 8px 40px rgba(0,0,0,0.8),0 0 0 2px rgba(255,255,255,0.4);
-    padding:3px 2px;}
-  .el:hover .atomic-num{font-size:0.65rem;font-weight:700;letter-spacing:0;}
-  .el:hover .symbol{font-size:1.1rem;font-weight:800;letter-spacing:-0.01em;}
-  .el:hover .mass{font-size:0.55rem;font-weight:600;}
-  .el:hover .ion-charge{font-size:0.50rem;line-height:1.25;font-weight:700;letter-spacing:0;}
+    box-shadow:0 8px 40px rgba(0,0,0,0.8),0 0 0 2px rgba(255,255,255,0.4);}
+  .el:hover .atomic-num{font-size:0.38rem;}
+  .el:hover .symbol{font-size:0.85rem;font-weight:800;}
+  .el:hover .mass{font-size:0.32rem;}
+  .el:hover .ion-charge{font-size:0.3rem;line-height:1;}
   .el .atomic-num{font-family:'Space Mono',monospace;font-size:0.5rem;
     color:rgba(255,255,255,0.7);align-self:flex-start;line-height:1;}
   .light .el .atomic-num{color:rgba(0,0,0,0.5);}
@@ -190,8 +189,6 @@
     font-size:0.72rem;font-weight:700;color:white;line-height:1;}
   .trend-cell .tc-val{font-family:'Space Mono',monospace;
     font-size:0.36rem;color:rgba(255,255,255,0.9);margin-top:1px;}
-  .trend-cell:hover .tc-sym{font-size:1.0rem;font-weight:800;}
-  .trend-cell:hover .tc-val{font-size:0.52rem;font-weight:600;}
   .trend-empty{aspect-ratio:1;}
   .trend-legend{display:flex;align-items:center;gap:10px;margin-top:12px;flex-wrap:wrap;}
   .trend-legend-bar{height:14px;width:200px;border-radius:4px;
@@ -383,80 +380,6 @@
     border-radius:6px;padding:2px 9px;
     font-family:'Atkinson Hyperlegible',sans-serif;
     font-size:0.82rem;font-weight:700;color:var(--accent);}
-
-  /* IE graph toggle */
-  .trend-view-toggle{display:flex;gap:8px;margin-bottom:12px;}
-  .tv-btn{flex:1;padding:7px 14px;background:var(--surface2);border:1px solid var(--border);
-    border-radius:8px;cursor:pointer;font-family:'Space Mono',monospace;font-size:0.62rem;
-    font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--text-muted);
-    transition:all 0.2s;}
-  .tv-btn.active{background:color-mix(in srgb,var(--accent) 20%,var(--surface2));
-    border-color:var(--accent);color:var(--accent);}
-  .ie-graph-wrap{overflow-x:auto;padding-bottom:8px;}
-  .ie-graph-svg{min-width:700px;}
-
-  /* Solubility rules table (booklet style) */
-  .solrules-wrap{font-size:0.82rem;}
-  .solrules-title{text-align:center;margin-bottom:12px;}
-  .solrules-title h3{font-size:0.95rem;font-weight:700;letter-spacing:0.5px;
-    background:linear-gradient(135deg,var(--accent),var(--accent2));
-    -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
-  .solrules-title p{font-size:0.7rem;color:var(--text-muted);font-style:italic;margin-top:2px;}
-  .solrules-table{width:100%;border-collapse:collapse;}
-  .solrules-table th{background:var(--surface2);padding:9px 14px;text-align:left;
-    font-family:'Space Mono',monospace;font-size:0.62rem;letter-spacing:1px;
-    text-transform:uppercase;color:var(--accent);border-bottom:2px solid var(--border);}
-  .solrules-table td{padding:8px 14px;border-bottom:1px solid var(--border);
-    vertical-align:top;color:var(--text);}
-  .solrules-table tr:last-child td{border-bottom:none;}
-  .solrules-table tr:hover td{background:var(--surface2);}
-  .sol-anion{font-family:'Atkinson Hyperlegible','Inter',sans-serif;font-weight:700;
-    font-size:0.88rem;color:var(--accent);}
-  .sol-rule-row td:first-child{min-width:180px;}
-  .sol-soluble{color:#22c55e;font-weight:700;}
-  .sol-low{color:#eab308;font-weight:700;}
-  .sol-sub-row td{padding:4px 14px 4px 24px;border-bottom:1px dashed
-    color-mix(in srgb,var(--border) 60%,transparent);font-size:0.78rem;}
-  .sol-or{color:var(--text-muted);font-style:italic;font-size:0.72rem;}
-
-  /* Ksp table */
-  .ksp-wrap{font-size:0.82rem;}
-  .ksp-title{text-align:center;margin-bottom:12px;}
-  .ksp-title h3{font-size:0.95rem;font-weight:700;
-    background:linear-gradient(135deg,var(--accent),var(--accent2));
-    -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
-  .ksp-table{width:100%;border-collapse:collapse;}
-  .ksp-table th{background:var(--surface2);padding:9px 14px;text-align:left;
-    font-family:'Space Mono',monospace;font-size:0.62rem;letter-spacing:1px;
-    text-transform:uppercase;color:var(--accent);border-bottom:2px solid var(--border);}
-  .ksp-table th.ksp-val-h{text-align:right;}
-  .ksp-table td{padding:7px 14px;border-bottom:1px solid color-mix(in srgb,var(--border) 50%,transparent);
-    color:var(--text);}
-  .ksp-table tr:hover td{background:var(--surface2);}
-  .ksp-name{font-size:0.82rem;}
-  .ksp-formula{font-family:'Space Mono',monospace;font-size:0.76rem;font-weight:600;}
-  .ksp-val{text-align:right;font-family:'Space Mono',monospace;font-size:0.76rem;
-    font-weight:700;color:var(--accent2);}
-
-  /* Indicators table */
-  .ind-wrap{font-size:0.82rem;}
-  .ind-title{text-align:center;margin-bottom:12px;}
-  .ind-title h3{font-size:0.95rem;font-weight:700;
-    background:linear-gradient(135deg,var(--accent),var(--accent2));
-    -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
-  .ind-table{width:100%;border-collapse:collapse;}
-  .ind-table th{background:var(--surface2);padding:9px 14px;text-align:left;
-    font-family:'Space Mono',monospace;font-size:0.62rem;letter-spacing:1px;
-    text-transform:uppercase;color:var(--accent);border-bottom:2px solid var(--border);}
-  .ind-table td{padding:8px 14px;border-bottom:1px solid color-mix(in srgb,var(--border) 50%,transparent);
-    color:var(--text);vertical-align:middle;}
-  .ind-table tr:hover td{background:var(--surface2);}
-  .ind-name{font-weight:600;font-size:0.85rem;}
-  .ind-range{font-family:'Space Mono',monospace;font-size:0.78rem;text-align:center;}
-  .ind-change{font-size:0.8rem;color:var(--text-muted);}
-  .ind-bar-cell{width:180px;padding:6px 10px;}
-  .ind-bar{height:14px;border-radius:4px;width:100%;}
-  .ind-group-div td{border-top:2px solid var(--border);}
 </style>
 </head>
 <body>
@@ -499,18 +422,12 @@
     <button class="side-btn" id="btnSolubility">
       <span class="si">💧</span>Solubility
     </button>
-    <button class="side-btn" id="btnKsp">
-      <span class="si">🔬</span>Ksp Table
-    </button>
     <div class="side-divider"></div>
     <button class="side-btn" id="btnActivity">
       <span class="si">🔋</span>Activity Series
     </button>
     <button class="side-btn" id="btnKa">
       <span class="si">🧪</span>Ka Values
-    </button>
-    <button class="side-btn" id="btnIndicators">
-      <span class="si">🌈</span>Indicators
     </button>
     <div class="side-divider"></div>
     <button class="side-btn" id="btnRedox">
@@ -595,25 +512,16 @@
 
 <!-- TREND PANEL -->
 <div class="panel-overlay" id="trendOverlay">
-  <div class="panel-box" style="width:980px">
+  <div class="panel-box">
     <div class="panel-header">
       <h2 id="trendTitle">Trend</h2>
       <button class="panel-close" id="closeTrend">✕</button>
     </div>
     <div class="panel-body">
-      <div class="trend-view-toggle" id="ieToggle" style="display:none">
-        <button class="tv-btn active" id="btnViewHeatmap">🟦 Heat Map</button>
-        <button class="tv-btn" id="btnViewGraph">📈 Graph</button>
-      </div>
-      <div id="trendHeatmapView">
-        <div class="trend-grid" id="trendGrid"></div>
-        <div class="trend-legend">
-          <div class="trend-legend-bar"></div>
-          <span id="trendLow">Low</span><span>→</span><span id="trendHigh">High</span>
-        </div>
-      </div>
-      <div id="trendGraphView" style="display:none">
-        <div class="ie-graph-wrap"><svg class="ie-graph-svg" id="ieGraphSvg"></svg></div>
+      <div class="trend-grid" id="trendGrid"></div>
+      <div class="trend-legend">
+        <div class="trend-legend-bar"></div>
+        <span id="trendLow">Low</span><span>→</span><span id="trendHigh">High</span>
       </div>
       <div class="trend-note" id="trendNote"></div>
     </div>
@@ -672,28 +580,6 @@
       <button class="panel-close" id="closeRedox">✕</button>
     </div>
     <div class="panel-body" id="redoxBody"></div>
-  </div>
-</div>
-
-<!-- KSP PANEL -->
-<div class="panel-overlay" id="kspOverlay">
-  <div class="panel-box" style="width:580px">
-    <div class="panel-header">
-      <h2>🔬 Solubility Product Constants (Ksp, 25°C)</h2>
-      <button class="panel-close" id="closeKsp">✕</button>
-    </div>
-    <div class="panel-body" id="kspBody"></div>
-  </div>
-</div>
-
-<!-- INDICATORS PANEL -->
-<div class="panel-overlay" id="indicatorsOverlay">
-  <div class="panel-box" style="width:620px">
-    <div class="panel-header">
-      <h2>🌈 Acid-Base Indicators</h2>
-      <button class="panel-close" id="closeIndicators">✕</button>
-    </div>
-    <div class="panel-body" id="indicatorsBody"></div>
   </div>
 </div>
 

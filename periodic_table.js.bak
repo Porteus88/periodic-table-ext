@@ -272,10 +272,11 @@ document.querySelectorAll(".panel-overlay").forEach(p => {
 });
 
 // ─── TREND VISUALIZER ─────────────────────────────────────────────
-let currentTrendKey = null;
-
-function buildHeatmap(key) {
+function openTrend(key) {
   const cfg = TREND_DATA[key];
+  document.getElementById("trendTitle").textContent = cfg.title;
+  document.getElementById("trendNote").textContent = cfg.note;
+
   const values = ELEMENTS.map(el => cfg.getValue(el)).filter(v => v!==null);
   const min = Math.min(...values);
   const max = Math.max(...values);
@@ -327,125 +328,8 @@ function buildHeatmap(key) {
 
   document.getElementById("trendLow").textContent=`Low (${min} ${cfg.unit})`;
   document.getElementById("trendHigh").textContent=`High (${max} ${cfg.unit})`;
-}
-
-function buildIEGraph() {
-  const svg = document.getElementById("ieGraphSvg");
-  const W = 860, H = 320, padL = 52, padR = 20, padT = 20, padB = 40;
-  const plotW = W - padL - padR, plotH = H - padT - padB;
-
-  const data = ELEMENTS
-    .filter(el => el.ie !== "—" && !isNaN(parseFloat(el.ie)))
-    .map(el => ({z: el.z, sym: el.sym, val: parseFloat(el.ie), cat: el.cat}));
-
-  const maxVal = Math.max(...data.map(d => d.val));
-  const minVal = 0;
-
-  const xScale = z => padL + ((z-1) / 117) * plotW;
-  const yScale = v => padT + plotH - ((v - minVal) / (maxVal - minVal)) * plotH;
-
-  const CAT_COLORS_SVG = {
-    "alkali":"#ef4444","alkali-earth":"#f97316","transition":"#3b82f6",
-    "post-trans":"#8b5cf6","metalloid":"#14b8a6","nonmetal":"#22c55e",
-    "halogen":"#eab308","noble-gas":"#ec4899","lanthanide":"#06b6d4","actinide":"#f59e0b"
-  };
-
-  // Build path
-  let pathD = "";
-  data.forEach((d, i) => {
-    const x = xScale(d.z), y = yScale(d.val);
-    pathD += (i===0 ? `M${x},${y}` : ` L${x},${y}`);
-  });
-
-  // Y grid lines
-  let gridLines = "";
-  for (let v=0; v<=maxVal; v+=500) {
-    const y = yScale(v);
-    gridLines += `<line x1="${padL}" y1="${y}" x2="${padL+plotW}" y2="${y}" stroke="rgba(255,255,255,0.07)" stroke-width="1"/>`;
-    gridLines += `<text x="${padL-5}" y="${y+4}" text-anchor="end" fill="rgba(255,255,255,0.4)" font-size="9" font-family="monospace">${v}</text>`;
-  }
-
-  // Period dividers (Z values at start of each period)
-  const periodStarts = [1,3,11,19,37,55,87];
-  let periodLines = "";
-  periodStarts.forEach((z,i) => {
-    const x = xScale(z);
-    const label = i===0?"P1":`P${i+1}`;
-    periodLines += `<line x1="${x}" y1="${padT}" x2="${x}" y2="${padT+plotH}" stroke="rgba(255,255,255,0.12)" stroke-width="1" stroke-dasharray="3,3"/>`;
-    periodLines += `<text x="${x+3}" y="${padT+plotH+14}" fill="rgba(255,255,255,0.35)" font-size="8" font-family="monospace">${label}</text>`;
-  });
-
-  // Dots
-  let dots = "";
-  data.forEach(d => {
-    const x = xScale(d.z), y = yScale(d.val);
-    const col = CAT_COLORS_SVG[d.cat] || "#94a3b8";
-    dots += `<circle cx="${x}" cy="${y}" r="3" fill="${col}" stroke="rgba(0,0,0,0.5)" stroke-width="0.5">
-      <title>${d.sym} (Z=${d.z}): ${d.val} kJ/mol</title>
-    </circle>`;
-  });
-
-  // Notable labels (noble gases + H, Na, K peaks)
-  const labelZ = [2,10,18,36,54,86,1];
-  let labels = "";
-  labelZ.forEach(z => {
-    const d = data.find(x=>x.z===z);
-    if (!d) return;
-    const x = xScale(d.z), y = yScale(d.val);
-    labels += `<text x="${x}" y="${y-6}" text-anchor="middle" fill="rgba(255,255,255,0.7)" font-size="8.5" font-family="sans-serif" font-weight="700">${d.sym}</text>`;
-  });
-
-  svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
-  svg.setAttribute("width", W);
-  svg.setAttribute("height", H);
-  svg.innerHTML = `
-    <rect width="${W}" height="${H}" fill="transparent"/>
-    ${gridLines}
-    ${periodLines}
-    <path d="${pathD}" fill="none" stroke="rgba(56,189,248,0.5)" stroke-width="1.2"/>
-    ${dots}
-    ${labels}
-    <line x1="${padL}" y1="${padT}" x2="${padL}" y2="${padT+plotH}" stroke="rgba(255,255,255,0.2)" stroke-width="1"/>
-    <line x1="${padL}" y1="${padT+plotH}" x2="${padL+plotW}" y2="${padT+plotH}" stroke="rgba(255,255,255,0.2)" stroke-width="1"/>
-    <text x="${padL+plotW/2}" y="${H-2}" text-anchor="middle" fill="rgba(255,255,255,0.4)" font-size="10" font-family="monospace">Atomic Number (Z)</text>
-    <text x="12" y="${padT+plotH/2}" text-anchor="middle" fill="rgba(255,255,255,0.4)" font-size="10" font-family="monospace" transform="rotate(-90,12,${padT+plotH/2})">IE₁ (kJ/mol)</text>
-  `;
-}
-
-function openTrend(key) {
-  currentTrendKey = key;
-  const cfg = TREND_DATA[key];
-  document.getElementById("trendTitle").textContent = cfg.title;
-  document.getElementById("trendNote").textContent = cfg.note;
-
-  // Show/hide IE toggle
-  const isIE = key === "ionization";
-  document.getElementById("ieToggle").style.display = isIE ? "flex" : "none";
-
-  // Always start on heatmap view
-  document.getElementById("trendHeatmapView").style.display = "";
-  document.getElementById("trendGraphView").style.display = "none";
-  document.getElementById("btnViewHeatmap").classList.add("active");
-  document.getElementById("btnViewGraph").classList.remove("active");
-
-  buildHeatmap(key);
   openPanel("trendOverlay");
 }
-
-// IE graph toggle buttons
-document.getElementById("btnViewHeatmap").addEventListener("click", () => {
-  document.getElementById("trendHeatmapView").style.display = "";
-  document.getElementById("trendGraphView").style.display = "none";
-  document.getElementById("btnViewHeatmap").classList.add("active");
-  document.getElementById("btnViewGraph").classList.remove("active");
-});
-document.getElementById("btnViewGraph").addEventListener("click", () => {
-  document.getElementById("trendHeatmapView").style.display = "none";
-  document.getElementById("trendGraphView").style.display = "";
-  document.getElementById("btnViewHeatmap").classList.remove("active");
-  document.getElementById("btnViewGraph").classList.add("active");
-  buildIEGraph();
-});
 
 // ─── COMMON IONS CHART ────────────────────────────────────────────
 function buildIonsChart() {
@@ -514,116 +398,41 @@ function buildIonsChart() {
   `;
 }
 
-// ─── SOLUBILITY CHART (booklet rules style) ───────────────────────
+// ─── SOLUBILITY CHART ─────────────────────────────────────────────
 function buildSolubilityChart() {
-  // Data matches BC Chem 12 data booklet page 4 - rules format
-  const rules = [
-    {
-      anions: ["All"],
-      rows: [
-        {cations: "Alkali ions: Li⁺, Na⁺, K⁺, Rb⁺, Cs⁺, Fr⁺", solubility: "Soluble", cls:"sol-soluble"},
-      ]
-    },
-    {
-      anions: ["All"],
-      rows: [
-        {cations: "Hydrogen ion: H⁺", solubility: "Soluble", cls:"sol-soluble"},
-      ]
-    },
-    {
-      anions: ["All"],
-      rows: [
-        {cations: "Ammonium ion: NH₄⁺", solubility: "Soluble", cls:"sol-soluble"},
-      ]
-    },
-    {
-      anions: ["Nitrate, NO₃⁻"],
-      rows: [
-        {cations: "All", solubility: "Soluble", cls:"sol-soluble"},
-      ]
-    },
-    {
-      anions: ["Chloride, Cl⁻", "or Bromide, Br⁻", "or Iodide, I⁻"],
-      rows: [
-        {cations: "All others", solubility: "Soluble", cls:"sol-soluble"},
-        {cations: "Ag⁺, Pb²⁺, Cu⁺", solubility: "Low Solubility", cls:"sol-low"},
-      ]
-    },
-    {
-      anions: ["Sulphate, SO₄²⁻"],
-      rows: [
-        {cations: "All others", solubility: "Soluble", cls:"sol-soluble"},
-        {cations: "Ag⁺, Ca²⁺, Sr²⁺, Ba²⁺, Pb²⁺", solubility: "Low Solubility", cls:"sol-low"},
-      ]
-    },
-    {
-      anions: ["Sulphide, S²⁻"],
-      rows: [
-        {cations: "Alkali ions, H⁺, NH₄⁺, Be²⁺, Mg²⁺, Ca²⁺, Sr²⁺, Ba²⁺", solubility: "Soluble", cls:"sol-soluble"},
-        {cations: "All others", solubility: "Low Solubility", cls:"sol-low"},
-      ]
-    },
-    {
-      anions: ["Hydroxide, OH⁻"],
-      rows: [
-        {cations: "Alkali ions, H⁺, NH₄⁺, Sr²⁺", solubility: "Soluble", cls:"sol-soluble"},
-        {cations: "All others", solubility: "Low Solubility", cls:"sol-low"},
-      ]
-    },
-    {
-      anions: ["Phosphate, PO₄³⁻", "or Carbonate, CO₃²⁻", "or Sulphite, SO₃²⁻"],
-      rows: [
-        {cations: "Alkali ions, H⁺, NH₄⁺", solubility: "Soluble", cls:"sol-soluble"},
-        {cations: "All others", solubility: "Low Solubility", cls:"sol-low"},
-      ]
-    },
+  const cations = ["Li⁺","Na⁺","K⁺","NH₄⁺","Ag⁺","Ca²⁺","Mg²⁺","Ba²⁺","Fe²⁺","Fe³⁺","Cu²⁺","Zn²⁺","Pb²⁺","Al³⁺","Hg²⁺","Mn²⁺","Ni²⁺","Co²⁺","Sn²⁺","Cr³⁺"];
+  const anions = [
+    {name:"NO₃⁻",    data:{default:"S"}},
+    {name:"CH₃COO⁻", data:{"Ag⁺":"SS",default:"S"}},
+    {name:"Cl⁻",     data:{"Ag⁺":"I","Pb²⁺":"I","Hg²⁺":"I",default:"S"}},
+    {name:"Br⁻",     data:{"Ag⁺":"I","Pb²⁺":"SS","Hg²⁺":"I",default:"S"}},
+    {name:"I⁻",      data:{"Ag⁺":"I","Pb²⁺":"I","Hg²⁺":"I","Cu²⁺":"I",default:"S"}},
+    {name:"SO₄²⁻",   data:{"Ba²⁺":"I","Ca²⁺":"SS","Pb²⁺":"I","Ag⁺":"SS","Hg²⁺":"SS",default:"S"}},
+    {name:"CO₃²⁻",   data:{"Li⁺":"S","Na⁺":"S","K⁺":"S","NH₄⁺":"S","Ag⁺":"I","Ca²⁺":"I","Mg²⁺":"I","Ba²⁺":"I","Fe²⁺":"I","Fe³⁺":"D","Cu²⁺":"I","Zn²⁺":"I","Pb²⁺":"I","Al³⁺":"D","Hg²⁺":"I","Mn²⁺":"I","Ni²⁺":"I","Co²⁺":"I","Sn²⁺":"I","Cr³⁺":"D"}},
+    {name:"PO₄³⁻",   data:{"Li⁺":"S","Na⁺":"S","K⁺":"S","NH₄⁺":"S",default:"I"}},
+    {name:"OH⁻",     data:{"Li⁺":"S","Na⁺":"S","K⁺":"S","NH₄⁺":"S","Ba²⁺":"S","Ca²⁺":"SS","Ag⁺":"I","Mg²⁺":"I","Fe²⁺":"I","Fe³⁺":"I","Cu²⁺":"I","Zn²⁺":"I","Pb²⁺":"I","Al³⁺":"I","Hg²⁺":"I","Mn²⁺":"I","Ni²⁺":"I","Co²⁺":"I","Sn²⁺":"I","Cr³⁺":"I",default:"I"}},
+    {name:"S²⁻",     data:{"Li⁺":"S","Na⁺":"S","K⁺":"S","NH₄⁺":"S","Ca²⁺":"S","Mg²⁺":"S","Ba²⁺":"S","Fe²⁺":"I","Fe³⁺":"D","Cu²⁺":"I","Zn²⁺":"I","Pb²⁺":"I","Ag⁺":"I","Hg²⁺":"I","Mn²⁺":"I","Ni²⁺":"I","Co²⁺":"I","Sn²⁺":"I","Cr³⁺":"D","Al³⁺":"D",default:"I"}},
+    {name:"CrO₄²⁻",  data:{"Li⁺":"S","Na⁺":"S","K⁺":"S","NH₄⁺":"S","Ag⁺":"I","Ca²⁺":"SS","Ba²⁺":"I","Pb²⁺":"I","Hg²⁺":"I","Zn²⁺":"S",default:"S"}},
   ];
 
-  let rows = "";
-  rules.forEach((rule, ri) => {
-    const anionCell = rule.anions.map((a, ai) =>
-      `<span class="sol-anion">${a.startsWith("or") ? '<span class="sol-or">'+a+'</span>' : a}</span>`
-    ).join("<br>");
+  const getVal = (an, cat) => an.data[cat]!==undefined ? an.data[cat] : (an.data.default||"S");
 
-    rule.rows.forEach((r, rowIdx) => {
-      const isFirst = rowIdx === 0;
-      const isDashed = rule.rows.length > 1 && rowIdx > 0;
-      const borderStyle = isDashed ? "border-top:1px dashed rgba(100,116,139,0.4);" : "";
-      const topBorder = (ri > 0 && rowIdx === 0) ? "border-top:2px solid var(--border);" : "";
-
-      if (isFirst) {
-        rows += `<tr class="sol-rule-row">
-          <td rowspan="${rule.rows.length}" style="${topBorder}">${anionCell}</td>
-          <td style="${borderStyle}">${r.cations}</td>
-          <td class="${r.cls}" style="${borderStyle} text-align:right;">${r.solubility}</td>
-        </tr>`;
-      } else {
-        rows += `<tr class="sol-sub-row">
-          <td style="${borderStyle}">${r.cations}</td>
-          <td class="${r.cls}" style="${borderStyle} text-align:right;">${r.solubility}</td>
-        </tr>`;
-      }
-    });
+  let html=`<div class="sol-wrap"><table class="sol-table"><thead><tr><th class="row-head">Anion / Cation</th>`;
+  cations.forEach(c=>{html+=`<th>${c}</th>`;});
+  html+=`</tr></thead><tbody>`;
+  anions.forEach(an=>{
+    html+=`<tr><th class="row-head">${an.name}</th>`;
+    cations.forEach(cat=>{const v=getVal(an,cat);html+=`<td class="${v}">${v}</td>`;});
+    html+=`</tr>`;
   });
-
-  document.getElementById("solubilityBody").innerHTML = `
-    <div class="solrules-wrap">
-      <div class="solrules-title">
-        <h3>Solubility of Common Compounds in Water</h3>
-        <p>The term <em>soluble</em> here means &gt; 0.1 mol/L at 25°C.</p>
-      </div>
-      <table class="solrules-table">
-        <thead>
-          <tr>
-            <th style="width:200px">Negative Ions (Anions)</th>
-            <th>Positive Ions (Cations)</th>
-            <th style="width:130px;text-align:right">Solubility of Compounds</th>
-          </tr>
-        </thead>
-        <tbody>${rows}</tbody>
-      </table>
-    </div>
-  `;
+  html+=`</tbody></table></div>
+  <div class="sol-key">
+    <div class="sol-key-item"><span style="color:#22c55e;font-weight:700">S</span> — Soluble (&gt;1g/100mL)</div>
+    <div class="sol-key-item"><span style="color:#eab308;font-weight:700">SS</span> — Slightly Soluble</div>
+    <div class="sol-key-item"><span style="color:#ef4444;font-weight:700">I</span> — Insoluble (&lt;0.1g/100mL)</div>
+    <div class="sol-key-item"><span style="color:var(--text-muted);font-weight:700">D</span> — Decomposes in water</div>
+  </div>`;
+  document.getElementById("solubilityBody").innerHTML=html;
 }
 
 // ─── ACTIVITY SERIES ──────────────────────────────────────────────
@@ -660,55 +469,55 @@ function buildActivitySeries() {
   document.getElementById("activityBody").innerHTML=html;
 }
 
-// ─── Ka CHART (exact booklet data) ───────────────────────────────
+// ─── Ka CHART ─────────────────────────────────────────────────────
 function buildKaChart() {
+  // Format: {name, acid, arrow, base, ka, strong}
+  // arrow: "→" for strong (one-way), "⇌" for weak (equilibrium)
   const acids=[
-    {name:"Perchloric",                    acid:"HClO₄",           arrow:"→", base:"H⁺ + ClO₄⁻",                    ka:"very large", strong:true},
-    {name:"Hydriodic",                     acid:"HI",              arrow:"→", base:"H⁺ + I⁻",                       ka:"very large", strong:true},
-    {name:"Hydrobromic",                   acid:"HBr",             arrow:"→", base:"H⁺ + Br⁻",                      ka:"very large", strong:true},
-    {name:"Hydrochloric",                  acid:"HCl",             arrow:"→", base:"H⁺ + Cl⁻",                      ka:"very large", strong:true},
-    {name:"Nitric",                        acid:"HNO₃",            arrow:"→", base:"H⁺ + NO₃⁻",                     ka:"very large", strong:true},
-    {name:"Sulphuric",                     acid:"H₂SO₄",           arrow:"→", base:"H⁺ + HSO₄⁻",                    ka:"very large", strong:true},
-    {name:"Hydronium Ion",                 acid:"H₃O⁺",            arrow:"⇌", base:"H⁺ + H₂O",                      ka:"1.0",        ref:true},
-    {name:"Iodic",                         acid:"HIO₃",            arrow:"⇌", base:"H⁺ + IO₃⁻",                     ka:"1.7×10⁻¹"},
-    {name:"Oxalic",                        acid:"H₂C₂O₄",          arrow:"⇌", base:"H⁺ + HC₂O₄⁻",                   ka:"5.9×10⁻²"},
-    {name:"Sulphurous (SO₂+H₂O)",          acid:"H₂SO₃",           arrow:"⇌", base:"H⁺ + HSO₃⁻",                    ka:"1.5×10⁻²"},
-    {name:"Hydrogen sulphate ion",         acid:"HSO₄⁻",           arrow:"⇌", base:"H⁺ + SO₄²⁻",                    ka:"1.2×10⁻²"},
-    {name:"Phosphoric",                    acid:"H₃PO₄",           arrow:"⇌", base:"H⁺ + H₂PO₄⁻",                   ka:"7.5×10⁻³"},
-    {name:"Hexaaquoiron ion, iron(III) ion",acid:"Fe(H₂O)₆³⁺",    arrow:"⇌", base:"H⁺ + Fe(H₂O)₅(OH)²⁺",           ka:"6.0×10⁻³"},
-    {name:"Citric",                        acid:"H₃C₆H₅O₇",        arrow:"⇌", base:"H⁺ + H₂C₆H₅O₇⁻",               ka:"7.1×10⁻⁴"},
-    {name:"Nitrous",                       acid:"HNO₂",            arrow:"⇌", base:"H⁺ + NO₂⁻",                     ka:"4.6×10⁻⁴"},
-    {name:"Hydrofluoric",                  acid:"HF",              arrow:"⇌", base:"H⁺ + F⁻",                       ka:"3.5×10⁻⁴"},
-    {name:"Methanoic, formic",             acid:"HCOOH",           arrow:"⇌", base:"H⁺ + HCOO⁻",                    ka:"1.8×10⁻⁴"},
-    {name:"Hexaaquochromium ion, chromium(III) ion",acid:"Cr(H₂O)₆³⁺",arrow:"⇌",base:"H⁺ + Cr(H₂O)₅(OH)²⁺",      ka:"1.5×10⁻⁵"},
-    {name:"Benzoic",                       acid:"C₆H₅COOH",        arrow:"⇌", base:"H⁺ + C₆H₅COO⁻",                ka:"6.5×10⁻⁵"},
-    {name:"Hydrogen oxalate ion",          acid:"HC₂O₄⁻",          arrow:"⇌", base:"H⁺ + C₂O₄²⁻",                   ka:"6.4×10⁻⁵"},
-    {name:"Ethanoic, acetic",              acid:"CH₃COOH",         arrow:"⇌", base:"H⁺ + CH₃COO⁻",                  ka:"1.8×10⁻⁵"},
-    {name:"Dihydrogen citrate ion",        acid:"H₂C₆H₅O₇⁻",       arrow:"⇌", base:"H⁺ + HC₆H₅O₇²⁻",               ka:"1.7×10⁻⁵"},
-    {name:"Hexaaquoaluminum ion, aluminum ion",acid:"Al(H₂O)₆³⁺",  arrow:"⇌", base:"H⁺ + Al(H₂O)₅(OH)²⁺",          ka:"1.4×10⁻⁵"},
-    {name:"Carbonic (CO₂+H₂O)",            acid:"H₂CO₃",           arrow:"⇌", base:"H⁺ + HCO₃⁻",                    ka:"4.3×10⁻⁷"},
-    {name:"Monohydrogen citrate ion",      acid:"HC₆H₅O₇²⁻",       arrow:"⇌", base:"H⁺ + C₆H₅O₇³⁻",                ka:"4.1×10⁻⁷"},
-    {name:"Hydrogen sulphite ion",         acid:"HSO₃⁻",           arrow:"⇌", base:"H⁺ + SO₃²⁻",                    ka:"1.0×10⁻⁷"},
-    {name:"Hydrogen sulphide",             acid:"H₂S",             arrow:"⇌", base:"H⁺ + HS⁻",                      ka:"9.1×10⁻⁸"},
-    {name:"Dihydrogen phosphate ion",      acid:"H₂PO₄⁻",          arrow:"⇌", base:"H⁺ + HPO₄²⁻",                   ka:"6.2×10⁻⁸"},
-    {name:"Boric",                         acid:"H₃BO₃",           arrow:"⇌", base:"H⁺ + H₂BO₃⁻",                   ka:"7.3×10⁻¹⁰"},
-    {name:"Ammonium ion",                  acid:"NH₄⁺",            arrow:"⇌", base:"H⁺ + NH₃",                      ka:"5.6×10⁻¹⁰"},
-    {name:"Hydrocyanic",                   acid:"HCN",             arrow:"⇌", base:"H⁺ + CN⁻",                      ka:"4.9×10⁻¹⁰"},
-    {name:"Phenol",                        acid:"C₆H₅OH",          arrow:"⇌", base:"H⁺ + C₆H₅O⁻",                   ka:"1.3×10⁻¹⁰"},
-    {name:"Hydrogen carbonate ion",        acid:"HCO₃⁻",           arrow:"⇌", base:"H⁺ + CO₃²⁻",                    ka:"5.6×10⁻¹¹"},
-    {name:"Hydrogen peroxide",             acid:"H₂O₂",            arrow:"⇌", base:"H⁺ + HO₂⁻",                     ka:"2.4×10⁻¹²"},
-    {name:"Monohydrogen phosphate ion",    acid:"HPO₄²⁻",          arrow:"⇌", base:"H⁺ + PO₄³⁻",                    ka:"2.2×10⁻¹³"},
-    {name:"Water",                         acid:"H₂O",             arrow:"⇌", base:"H⁺ + OH⁻",                      ka:"1.0×10⁻¹⁴"},
-    {name:"Hydroxide ion",                 acid:"OH⁻",             arrow:"←", base:"H⁺ + O²⁻",                      ka:"very small", vweak:true},
-    {name:"Ammonia",                       acid:"NH₃",             arrow:"←", base:"H⁺ + NH₂⁻",                     ka:"very small", vweak:true},
+    {name:"Perchloric",          acid:"HClO₄",         arrow:"→", base:"H⁺ + ClO₄⁻",        ka:"very large", strong:true},
+    {name:"Hydriodic",           acid:"HI",             arrow:"→", base:"H⁺ + I⁻",            ka:"very large", strong:true},
+    {name:"Hydrobromic",         acid:"HBr",            arrow:"→", base:"H⁺ + Br⁻",           ka:"very large", strong:true},
+    {name:"Hydrochloric",        acid:"HCl",            arrow:"→", base:"H⁺ + Cl⁻",           ka:"very large", strong:true},
+    {name:"Nitric",              acid:"HNO₃",           arrow:"→", base:"H⁺ + NO₃⁻",          ka:"very large", strong:true},
+    {name:"Sulphuric",           acid:"H₂SO₄",          arrow:"→", base:"H⁺ + HSO₄⁻",         ka:"very large", strong:true},
+    {name:"Hydronium Ion",       acid:"H₃O⁺",           arrow:"⇌", base:"H⁺ + H₂O",           ka:"1.0",        ref:true},
+    {name:"Iodic",               acid:"HIO₃",           arrow:"⇌", base:"H⁺ + IO₃⁻",          ka:"1.7×10⁻¹"},
+    {name:"Oxalic",              acid:"H₂C₂O₄",         arrow:"⇌", base:"H⁺ + HC₂O₄⁻",        ka:"5.9×10⁻²"},
+    {name:"Sulphurous (SO₂+H₂O)",acid:"H₂SO₃",          arrow:"⇌", base:"H⁺ + HSO₃⁻",         ka:"1.5×10⁻²"},
+    {name:"Hydrogen sulphate ion",acid:"HSO₄⁻",          arrow:"⇌", base:"H⁺ + SO₄²⁻",         ka:"1.2×10⁻²"},
+    {name:"Phosphoric",          acid:"H₃PO₄",          arrow:"⇌", base:"H⁺ + H₂PO₄⁻",        ka:"7.5×10⁻³"},
+    {name:"Citric",              acid:"H₃C₆H₅O₇",       arrow:"⇌", base:"H⁺ + H₂C₆H₅O₇⁻",     ka:"7.1×10⁻⁴"},
+    {name:"Nitrous",             acid:"HNO₂",           arrow:"⇌", base:"H⁺ + NO₂⁻",          ka:"4.6×10⁻⁴"},
+    {name:"Hydrofluoric",        acid:"HF",             arrow:"⇌", base:"H⁺ + F⁻",            ka:"3.5×10⁻⁴"},
+    {name:"Methanoic, formic",   acid:"HCOOH",          arrow:"⇌", base:"H⁺ + HCOO⁻",         ka:"1.8×10⁻⁴"},
+    {name:"Benzoic",             acid:"C₆H₅COOH",       arrow:"⇌", base:"H⁺ + C₆H₅COO⁻",      ka:"6.5×10⁻⁵"},
+    {name:"Hydrogen oxalate ion",acid:"HC₂O₄⁻",         arrow:"⇌", base:"H⁺ + C₂O₄²⁻",        ka:"6.4×10⁻⁵"},
+    {name:"Ethanoic, acetic",    acid:"CH₃COOH",        arrow:"⇌", base:"H⁺ + CH₃COO⁻",       ka:"1.8×10⁻⁵"},
+    {name:"Dihydrogen citrate ion",acid:"H₂C₆H₅O₇⁻",   arrow:"⇌", base:"H⁺ + HC₆H₅O₇²⁻",    ka:"1.7×10⁻⁵"},
+    {name:"Carbonic (CO₂+H₂O)", acid:"H₂CO₃",          arrow:"⇌", base:"H⁺ + HCO₃⁻",         ka:"4.3×10⁻⁷"},
+    {name:"Monohydrogen citrate ion",acid:"HC₆H₅O₇²⁻", arrow:"⇌", base:"H⁺ + C₆H₅O₇³⁻",     ka:"4.1×10⁻⁷"},
+    {name:"Hydrogen sulphite ion",acid:"HSO₃⁻",         arrow:"⇌", base:"H⁺ + SO₃²⁻",         ka:"1.0×10⁻⁷"},
+    {name:"Hydrogen sulphide",   acid:"H₂S",            arrow:"⇌", base:"H⁺ + HS⁻",           ka:"9.1×10⁻⁸"},
+    {name:"Dihydrogen phosphate ion",acid:"H₂PO₄⁻",     arrow:"⇌", base:"H⁺ + HPO₄²⁻",        ka:"6.2×10⁻⁸"},
+    {name:"Boric",               acid:"H₃BO₃",          arrow:"⇌", base:"H⁺ + H₂BO₃⁻",        ka:"7.3×10⁻¹⁰"},
+    {name:"Ammonium ion",        acid:"NH₄⁺",           arrow:"⇌", base:"H⁺ + NH₃",           ka:"5.6×10⁻¹⁰"},
+    {name:"Hydrocyanic",         acid:"HCN",            arrow:"⇌", base:"H⁺ + CN⁻",           ka:"4.9×10⁻¹⁰"},
+    {name:"Phenol",              acid:"C₆H₅OH",         arrow:"⇌", base:"H⁺ + C₆H₅O⁻",        ka:"1.3×10⁻¹⁰"},
+    {name:"Hydrogen carbonate ion",acid:"HCO₃⁻",        arrow:"⇌", base:"H⁺ + CO₃²⁻",         ka:"5.6×10⁻¹¹"},
+    {name:"Hydrogen peroxide",   acid:"H₂O₂",           arrow:"⇌", base:"H⁺ + HO₂⁻",          ka:"2.4×10⁻¹²"},
+    {name:"Monohydrogen phosphate ion",acid:"HPO₄²⁻",   arrow:"⇌", base:"H⁺ + PO₄³⁻",         ka:"2.2×10⁻¹³"},
+    {name:"Water",               acid:"H₂O",            arrow:"⇌", base:"H⁺ + OH⁻",           ka:"1.0×10⁻¹⁴"},
+    {name:"Hydroxide ion",       acid:"OH⁻",            arrow:"←", base:"H⁺ + O²⁻",           ka:"very small", vweak:true},
+    {name:"Ammonia",             acid:"NH₃",            arrow:"←", base:"H⁺ + NH₂⁻",          ka:"very small", vweak:true},
   ];
 
   let rows="";
   acids.forEach(a=>{
     let rowCls="";
-    if(a.strong){rowCls=' class="ka-strong-row"';}
-    if(a.ref){rowCls=' class="ka-ref-row"';}
-    if(a.vweak){rowCls=' class="ka-strong-row" style="opacity:0.7"';}
+    let kaCls="";
+    if(a.strong){rowCls=" class=\"ka-strong-row\""; kaCls="";}
+    if(a.ref){rowCls=" class=\"ka-ref-row\"";}
+    if(a.vweak){rowCls=" class=\"ka-strong-row\" style=\"opacity:0.7\"";}
     rows+=`<tr${rowCls}>
       <td class="ka-name">${a.name}</td>
       <td class="ka-acid">${a.acid}</td>
@@ -747,7 +556,7 @@ function buildKaChart() {
           <tr>
             <th>Name of Acid</th>
             <th>Acid</th>
-            <th style="text-align:center;width:30px"></th>
+            <th style="text-align:center"></th>
             <th>Base</th>
             <th class="ka-th-ka">K<sub>a</sub></th>
           </tr>
@@ -867,139 +676,6 @@ function buildRedoxChart() {
   `;
 }
 
-// ─── Ksp TABLE ────────────────────────────────────────────────────
-function buildKspChart() {
-  const compounds = [
-    {name:"Barium carbonate",     formula:"BaCO₃",       ksp:"2.6 × 10⁻⁹"},
-    {name:"Barium chromate",      formula:"BaCrO₄",      ksp:"1.2 × 10⁻¹⁰"},
-    {name:"Barium sulphate",      formula:"BaSO₄",       ksp:"1.1 × 10⁻¹⁰"},
-    {name:"Calcium carbonate",    formula:"CaCO₃",       ksp:"5.0 × 10⁻⁹"},
-    {name:"Calcium oxalate",      formula:"CaC₂O₄",      ksp:"2.3 × 10⁻⁹"},
-    {name:"Calcium sulphate",     formula:"CaSO₄",       ksp:"7.1 × 10⁻⁵"},
-    {name:"Copper(I) iodide",     formula:"CuI",         ksp:"1.3 × 10⁻¹²"},
-    {name:"Copper(II) iodate",    formula:"Cu(IO₃)₂",    ksp:"6.9 × 10⁻⁸"},
-    {name:"Copper(II) sulphide",  formula:"CuS",         ksp:"6.0 × 10⁻³⁷"},
-    {name:"Iron(II) hydroxide",   formula:"Fe(OH)₂",     ksp:"4.9 × 10⁻¹⁷"},
-    {name:"Iron(II) sulphide",    formula:"FeS",         ksp:"6.0 × 10⁻¹⁹"},
-    {name:"Iron(III) hydroxide",  formula:"Fe(OH)₃",     ksp:"2.6 × 10⁻³⁹"},
-    {name:"Lead(II) bromide",     formula:"PbBr₂",       ksp:"6.6 × 10⁻⁶"},
-    {name:"Lead(II) chloride",    formula:"PbCl₂",       ksp:"1.2 × 10⁻⁵"},
-    {name:"Lead(II) iodate",      formula:"Pb(IO₃)₂",    ksp:"3.7 × 10⁻¹³"},
-    {name:"Lead(II) iodide",      formula:"PbI₂",        ksp:"8.5 × 10⁻⁹"},
-    {name:"Lead(II) sulphate",    formula:"PbSO₄",       ksp:"1.8 × 10⁻⁸"},
-    {name:"Magnesium carbonate",  formula:"MgCO₃",       ksp:"6.8 × 10⁻⁶"},
-    {name:"Magnesium hydroxide",  formula:"Mg(OH)₂",     ksp:"5.6 × 10⁻¹²"},
-    {name:"Silver bromate",       formula:"AgBrO₃",      ksp:"5.3 × 10⁻⁵"},
-    {name:"Silver bromide",       formula:"AgBr",        ksp:"5.4 × 10⁻¹³"},
-    {name:"Silver carbonate",     formula:"Ag₂CO₃",      ksp:"8.5 × 10⁻¹²"},
-    {name:"Silver chloride",      formula:"AgCl",        ksp:"1.8 × 10⁻¹⁰"},
-    {name:"Silver chromate",      formula:"Ag₂CrO₄",     ksp:"1.1 × 10⁻¹²"},
-    {name:"Silver iodate",        formula:"AgIO₃",       ksp:"3.2 × 10⁻⁸"},
-    {name:"Silver iodide",        formula:"AgI",         ksp:"8.5 × 10⁻¹⁷"},
-    {name:"Strontium carbonate",  formula:"SrCO₃",       ksp:"5.6 × 10⁻¹⁰"},
-    {name:"Strontium fluoride",   formula:"SrF₂",        ksp:"4.3 × 10⁻⁹"},
-    {name:"Strontium sulphate",   formula:"SrSO₄",       ksp:"3.4 × 10⁻⁷"},
-    {name:"Zinc sulphide",        formula:"ZnS",         ksp:"2.0 × 10⁻²⁵"},
-  ];
-
-  const rows = compounds.map(c => `
-    <tr>
-      <td class="ksp-name">${c.name}</td>
-      <td class="ksp-formula">${c.formula}</td>
-      <td class="ksp-val">${c.ksp}</td>
-    </tr>`).join("");
-
-  document.getElementById("kspBody").innerHTML = `
-    <div class="ksp-wrap">
-      <div class="ksp-title">
-        <h3>Solubility Product Constants at 25°C</h3>
-      </div>
-      <table class="ksp-table">
-        <thead>
-          <tr>
-            <th>Name</th>
-            <th>Formula</th>
-            <th class="ksp-val-h">K<sub>sp</sub></th>
-          </tr>
-        </thead>
-        <tbody>${rows}</tbody>
-      </table>
-    </div>
-  `;
-}
-
-// ─── ACID-BASE INDICATORS ──────────────────────────────────────────
-function buildIndicatorsChart() {
-  // Data from BC Chem 12 data booklet page 7
-  // Groups separated by dividers as in booklet
-  const indicators = [
-    {name:"Methyl violet",   range:"0.0 – 1.6",  change:"yellow to blue",       from:[255,235,59],  to:[103,58,183], group:1},
-    {name:"Thymol blue",     range:"1.2 – 2.8",  change:"red to yellow",        from:[244,67,54],   to:[255,235,59], group:1},
-    {name:"Orange IV",       range:"1.4 – 2.8",  change:"red to yellow",        from:[244,67,54],   to:[255,235,59], group:1},
-    {name:"Methyl orange",   range:"3.2 – 4.4",  change:"red to yellow",        from:[244,67,54],   to:[255,235,59], group:2},
-    {name:"Bromcresol green",range:"3.8 – 5.4",  change:"yellow to blue",       from:[255,235,59],  to:[33,150,243], group:2},
-    {name:"Methyl red",      range:"4.8 – 6.0",  change:"red to yellow",        from:[244,67,54],   to:[255,235,59], group:2},
-    {name:"Chlorophenol red",range:"5.2 – 6.8",  change:"yellow to red",        from:[255,235,59],  to:[244,67,54], group:3},
-    {name:"Bromthymol blue", range:"6.0 – 7.6",  change:"yellow to blue",       from:[255,235,59],  to:[33,150,243], group:3},
-    {name:"Phenol red",      range:"6.6 – 8.0",  change:"yellow to red",        from:[255,235,59],  to:[244,67,54], group:3},
-    {name:"Neutral red",     range:"6.8 – 8.0",  change:"red to amber",         from:[244,67,54],   to:[255,152,0], group:4},
-    {name:"Thymol blue",     range:"8.0 – 9.6",  change:"yellow to blue",       from:[255,235,59],  to:[33,150,243], group:4},
-    {name:"Phenolphthalein", range:"8.2 – 10.0", change:"colourless to pink",   from:[240,240,240], to:[233,30,99], group:4},
-    {name:"Thymolphthalein", range:"9.4 – 10.6", change:"colourless to blue",   from:[240,240,240], to:[33,150,243], group:5},
-    {name:"Alizarin yellow", range:"10.1 – 12.0",change:"yellow to red",        from:[255,235,59],  to:[244,67,54], group:5},
-    {name:"Indigo carmine",  range:"11.4 – 13.0",change:"blue to yellow",       from:[33,150,243],  to:[255,235,59], group:5},
-  ];
-
-  // pH scale bar: indicator range on 0-14 axis
-  const makePHBar = (range, from, to) => {
-    const parts = range.split("–").map(s => parseFloat(s.trim()));
-    const lo = parts[0], hi = parts[1];
-    const leftPct = (lo/14*100).toFixed(1);
-    const widthPct = ((hi-lo)/14*100).toFixed(1);
-    const fromColor = `rgb(${from[0]},${from[1]},${from[2]})`;
-    const toColor = `rgb(${to[0]},${to[1]},${to[2]})`;
-    return `<div style="position:relative;height:14px;background:rgba(255,255,255,0.07);border-radius:3px;width:100%;">
-      <div style="position:absolute;left:${leftPct}%;width:${widthPct}%;height:100%;
-        background:linear-gradient(to right,${fromColor},${toColor});border-radius:3px;
-        border:1px solid rgba(255,255,255,0.15);"></div>
-      <div style="position:absolute;top:0;left:0;right:0;bottom:0;display:flex;justify-content:space-between;padding:0 2px;">
-        ${[0,2,4,6,7,8,10,12,14].map(v=>`<span style="font-size:7px;color:rgba(255,255,255,0.3);line-height:14px;">${v}</span>`).join("")}
-      </div>
-    </div>`;
-  };
-
-  let prevGroup = 0;
-  const rows = indicators.map(ind => {
-    const divClass = ind.group !== prevGroup && prevGroup !== 0 ? ' class="ind-group-div"' : '';
-    prevGroup = ind.group;
-    return `<tr${divClass}>
-      <td class="ind-name">${ind.name}</td>
-      <td class="ind-range">${ind.range}</td>
-      <td class="ind-change">${ind.change}</td>
-      <td class="ind-bar-cell">${makePHBar(ind.range, ind.from, ind.to)}</td>
-    </tr>`;
-  }).join("");
-
-  document.getElementById("indicatorsBody").innerHTML = `
-    <div class="ind-wrap">
-      <div class="ind-title">
-        <h3>Acid-Base Indicators</h3>
-      </div>
-      <table class="ind-table">
-        <thead>
-          <tr>
-            <th>Indicator</th>
-            <th style="text-align:center">pH Range for<br>Colour Change</th>
-            <th>Colour Change<br>as pH Increases</th>
-            <th style="width:180px">pH Scale (0–14)</th>
-          </tr>
-        </thead>
-        <tbody>${rows}</tbody>
-      </table>
-    </div>
-  `;
-}
-
 // ─── THEME ────────────────────────────────────────────────────────
 let isDark=true;
 document.getElementById("themeToggle").addEventListener("click",()=>{
@@ -1018,16 +694,12 @@ buildSolubilityChart();
 buildActivitySeries();
 buildKaChart();
 buildRedoxChart();
-buildKspChart();
-buildIndicatorsChart();
 
 // Side chart buttons
 document.getElementById("btnIons").addEventListener("click", () => openPanel("ionsOverlay"));
 document.getElementById("btnSolubility").addEventListener("click", () => openPanel("solubilityOverlay"));
-document.getElementById("btnKsp").addEventListener("click", () => openPanel("kspOverlay"));
 document.getElementById("btnActivity").addEventListener("click", () => openPanel("activityOverlay"));
 document.getElementById("btnKa").addEventListener("click", () => openPanel("kaOverlay"));
-document.getElementById("btnIndicators").addEventListener("click", () => openPanel("indicatorsOverlay"));
 document.getElementById("btnRedox").addEventListener("click", () => openPanel("redoxOverlay"));
 
 // Trend buttons
@@ -1043,5 +715,3 @@ document.getElementById("closeSolubility").addEventListener("click", () => close
 document.getElementById("closeActivity").addEventListener("click", () => closePanel("activityOverlay"));
 document.getElementById("closeKa").addEventListener("click", () => closePanel("kaOverlay"));
 document.getElementById("closeRedox").addEventListener("click", () => closePanel("redoxOverlay"));
-document.getElementById("closeKsp").addEventListener("click", () => closePanel("kspOverlay"));
-document.getElementById("closeIndicators").addEventListener("click", () => closePanel("indicatorsOverlay"));
