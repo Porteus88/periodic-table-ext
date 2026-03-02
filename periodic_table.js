@@ -2723,138 +2723,212 @@ function lonepair(x,y,angle,col) {
           <circle cx="${x2}" cy="${y2}" r="1.6" fill="${col}"/>`;
 }
 
-// ── Per-group SVG diagrams (viewBox 0 0 260 110) ──────────────────
+// ── Per-group SVG diagrams ────────────────────────────────────────
+// Style matches reference: R groups as plain labels, functional core
+// only, correct bond angles, grey lone-pair dots, coloured heteroatoms.
+// viewBox="0 0 200 120" — square-ish cards, generous whitespace.
+// Lone pairs: two small grey circles (r=1.8) placed ~8px from atom centre.
+// O = red (#ef4444), N = blue (#3b82f6), C-skeleton = dark (#1e293b light / #e2e8f0 dark)
+// All bond angles geometrically accurate: sp3=109.5°, sp2=120°, sp=180°
 
-// ALKANE: propane skeleton  H₃C–CH₂–CH₃  zigzag
-// Carbons at (30,55) (100,35) (170,55) — tetrahedral zigzag
+const OC = '#ef4444';  // oxygen colour
+const NC = '#3b82f6';  // nitrogen colour
+const RC = '#1e293b';  // R group label (dark theme override via CSS)
+const BC = '#475569';  // bond colour
+const LP = '#94a3b8';  // lone pair dot colour
+
+// lone pair: two dots at angle 'deg' from atom (x,y), spread ±18°
+function lp(x, y, deg) {
+  const a1 = (deg - 18) * Math.PI / 180;
+  const a2 = (deg + 18) * Math.PI / 180;
+  const d = 9;
+  return `<circle cx="${(x + d*Math.cos(a1)).toFixed(1)}" cy="${(y + d*Math.sin(a1)).toFixed(1)}" r="1.8" fill="${LP}"/>
+<circle cx="${(x + d*Math.cos(a2)).toFixed(1)}" cy="${(y + d*Math.sin(a2)).toFixed(1)}" r="1.8" fill="${LP}"/>`;
+}
+
+// label: bold text label for atom
+const L = (x, y, text, col, sz=14, anchor='middle') =>
+  `<text x="${x}" y="${y}" text-anchor="${anchor}" dominant-baseline="central"
+   font-family="'Atkinson Hyperlegible','Inter',sans-serif" font-size="${sz}"
+   font-weight="700" fill="${col}">${text}</text>`;
+
+// Rgroup: italic R label
+const R = (x, y, text='R', anchor='middle') =>
+  `<text x="${x}" y="${y}" text-anchor="${anchor}" dominant-baseline="central"
+   font-family="'Atkinson Hyperlegible','Inter',sans-serif" font-size="15"
+   font-weight="700" font-style="italic" fill="var(--text)">${text}</text>`;
+
+// single bond line
+const b = (x1,y1,x2,y2,col=BC,w=2.2) =>
+  `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}"
+   stroke="${col}" stroke-width="${w}" stroke-linecap="round"/>`;
+
+// double bond: two parallel lines (offset perpendicular by 3px)
+function db(x1,y1,x2,y2,col=BC) {
+  const dx=x2-x1, dy=y2-y1, len=Math.hypot(dx,dy)||1;
+  const ox=(-dy/len)*3, oy=(dx/len)*3;
+  return b(x1+ox,y1+oy,x2+ox,y2+oy,col,1.9) + b(x1-ox,y1-oy,x2-ox,y2-oy,col,1.9);
+}
+
+// triple bond
+function tb(x1,y1,x2,y2,col=BC) {
+  const dx=x2-x1, dy=y2-y1, len=Math.hypot(dx,dy)||1;
+  const ox=(-dy/len)*3.8, oy=(dx/len)*3.8;
+  return b(x1+ox,y1+oy,x2+ox,y2+oy,col,1.7)
+       + b(x1,y1,x2,y2,col,1.7)
+       + b(x1-ox,y1-oy,x2-ox,y2-oy,col,1.7);
+}
+
+// ── Alkane: C–C–C zigzag, no heteroatoms ────────────────────────
+// Show propane: CH₃–CH₂–CH₃ in classic zigzag, angle=109.5°
+// C1(38,72) C2(100,44) C3(162,72)
 const svgAlkane = (() => {
-  const [c1x,c1y]=[30,55], [c2x,c2y]=[100,38], [c3x,c3y]=[170,55];
-  return bond(c1x,c1y,c2x,c2y) + bond(c2x,c2y,c3x,c3y)
-    + atom(c1x,c1y,'CH₃',C,10) + atom(c2x,c2y,'CH₂',C,10) + atom(c3x,c3y,'CH₃',C,10)
-    + `<text x="130" y="88" text-anchor="middle" font-size="9" fill="${C}" font-style="italic">propane (C₃H₈)</text>`;
+  const [c1x,c1y]=[38,72],[c2x,c2y]=[100,46],[c3x,c3y]=[162,72];
+  return b(c1x,c1y,c2x,c2y) + b(c2x,c2y,c3x,c3y)
+    + L(c1x,c1y,'CH₃',BC,12) + L(c2x,c2y,'CH₂',BC,12) + L(c3x,c3y,'CH₃',BC,12)
+    + `<text x="100" y="104" text-anchor="middle" dominant-baseline="central"
+       font-size="10" font-style="italic" fill="${LP}" font-family="'Inter',sans-serif">propane — sp³ carbon, ~109.5°</text>`;
 })();
 
-// ALKENE: but-2-ene  CH₃–CH=CH–CH₃  with correct planar geometry around C=C
-// C1(20,55) C2(80,55) =C3(140,55) C4(200,55) — horizontal with H positions
+// ── Alkene: R–CH=CH–R showing planar sp2, explicit H atoms ────────
+// C=C horizontal centre, H above left C, H below right C (120° geometry)
+// Left C at (72,60), right C at (128,60)
 const svgAlkene = (() => {
-  const col='#22c55e';
-  // C1-C2 single, C2=C3 double, C3-C4 single, all horizontal for clarity
-  // Show explicit H on sp2 carbons
-  const [c1x,c1y]=[28,58], [c2x,c2y]=[88,58], [c3x,c3y]=[152,58], [c4x,c4y]=[212,58];
-  return bond(c1x,c1y,c2x,c2y,C)
-    + dbond(c2x,c2y,c3x,c3y,col)
-    + bond(c3x,c3y,c4x,c4y,C)
-    // H atoms above/below sp2 carbons to show trigonal planar
-    + bond(c2x,c2y,c2x,c2y-24,col,1.5)
-    + bond(c3x,c3y,c3x,c3y+24,col,1.5)
-    + atom(c2x,c2y-30,'H',col,10)
-    + atom(c3x,c3y+30,'H',col,10)
-    + atom(c1x,c1y,'CH₃',C,9) + atom(c2x,c2y,'C',col,11) + atom(c3x,c3y,'C',col,11) + atom(c4x,c4y,'CH₃',C,9)
-    + `<text x="130" y="100" text-anchor="middle" font-size="9" fill="${col}" font-style="italic">but-2-ene</text>`;
+  const [lx,ly]=[72,60],[rx,ry]=[128,60];
+  // R groups: upper-left and lower-right for E/Z clarity
+  const rllx=30, rlly=36;   // R upper-left  (same side as H on right → Z reference)
+  const rrlx=170, rrly=84;  // R lower-right
+  const hlx=30, hly=84;     // H lower-left
+  const hrx=170, hry=36;    // H upper-right
+  return db(lx,ly,rx,ry,'#22c55e')
+    + b(lx,ly,rllx,rlly) + b(lx,ly,hlx,hly)
+    + b(rx,ry,rrlx,rrly) + b(rx,ry,hrx,hry)
+    + R(rllx,rlly) + L(hlx,hly,'H',BC,13) + R(rrlx,rrly) + L(hrx,hry,'H',BC,13)
+    + L(lx,ly,'C','#22c55e',15) + L(rx,ry,'C','#22c55e',15)
+    + `<text x="100" y="108" text-anchor="middle" dominant-baseline="central"
+       font-size="10" font-style="italic" fill="${LP}" font-family="'Inter',sans-serif">sp² carbon — planar, 120°</text>`;
 })();
 
-// ALKYNE: propyne  CH₃–C≡C–H  linear (sp carbons 180°)
+// ── Alkyne: R–C≡C–R linear ────────────────────────────────────────
 const svgAlkyne = (() => {
-  const col='#3b82f6';
-  const [c1x,c1y]=[35,55], [c2x,c2y]=[105,55], [c3x,c3y]=[165,55], [hx,hy]=[220,55];
-  return bond(c1x,c1y,c2x,c2y,C)
-    + tbond(c2x,c2y,c3x,c3y,col)
-    + bond(c3x,c3y,hx,hy,col,1.5)
-    + atom(c1x,c1y,'CH₃',C,10) + atom(c2x,c2y,'C',col,11) + atom(c3x,c3y,'C',col,11) + atom(hx,hy,'H',col,11)
-    + `<text x="130" y="90" text-anchor="middle" font-size="9" fill="${col}" font-style="italic">propyne (linear sp carbons)</text>`;
+  const [lx,ly]=[65,60],[rx,ry]=[135,60];
+  return tb(lx,ly,rx,ry,'#3b82f6')
+    + b(30,60,lx,60) + b(rx,60,170,60)
+    + R(22,60,'R','end') + R(178,60,'R','start')
+    + L(lx,ly,'C','#3b82f6',15) + L(rx,ry,'C','#3b82f6',15)
+    + `<text x="100" y="104" text-anchor="middle" dominant-baseline="central"
+       font-size="10" font-style="italic" fill="${LP}" font-family="'Inter',sans-serif">sp carbon — linear, 180°</text>`;
 })();
 
-// ALCOHOL: ethanol  CH₃–CH₂–O–H  zigzag then O-H
+// ── Alcohol: R–O–H  (bond angle ~109.5°, 2 lone pairs on O) ───────
+// Mirror the reference exactly: R on left, O centre, H upper-right,
+// lone pairs top and bottom of O
 const svgAlcohol = (() => {
-  const col='#ef4444';
-  const [c1x,c1y]=[30,55],[c2x,c2y]=[100,38],[ox,oy]=[160,55],[hx,hy]=[215,45];
-  return bond(c1x,c1y,c2x,c2y,C)
-    + bond(c2x,c2y,ox,oy,col)
-    + bond(ox,oy,hx,hy,col,1.5)
-    + lonepair(ox,oy,270,col) + lonepair(ox,oy,210,col)
-    + atom(c1x,c1y,'CH₃',C,10) + atom(c2x,c2y,'CH₂',C,10)
-    + atom(ox,oy,'O',col,12) + atom(hx,hy,'H',col,11)
-    + `<text x="130" y="92" text-anchor="middle" font-size="9" fill="${col}" font-style="italic">ethanol</text>`;
+  const [ox,oy]=[110,62];
+  const rx=42, ry=62;      // R left
+  const hx=158, hy=36;     // H upper-right (109.5° from R-O)
+  return b(rx,ry,ox,oy) + b(ox,oy,hx,hy,OC,2)
+    + lp(ox,oy,-70)   // lone pair upper-left
+    + lp(ox,oy,250)   // lone pair lower-left (bottom)
+    + R(rx,ry,'R','middle') + L(ox,oy,'O',OC,16) + L(hx,hy,'H',OC,14)
+    + `<text x="100" y="104" text-anchor="middle" dominant-baseline="central"
+       font-size="10" font-style="italic" fill="${LP}" font-family="'Inter',sans-serif">hydroxyl group −OH</text>`;
 })();
 
-// ALDEHYDE: ethanal  CH₃–C(=O)–H
-// Carbonyl C in centre; =O goes up, H goes right, chain left
+// ── Aldehyde: R–C(=O)–H  (C=O up, H to lower-right, R to left) ───
+// Match reference: C centre, =O straight up, R left, H lower-right in blue
 const svgAldehyde = (() => {
-  const col='#f97316';
-  const [c1x,c1y]=[40,60],[c2x,c2y]=[120,60],[ox,oy]=[120,22],[hx,hy]=[190,60];
-  return bond(c1x,c1y,c2x,c2y,C)
-    + dbond(c2x,c2y,ox,oy,col)
-    + bond(c2x,c2y,hx,hy,col,1.5)
-    + atom(c1x,c1y,'CH₃',C,10) + atom(c2x,c2y,'C',col,11)
-    + atom(ox,oy,'O',col,12) + atom(hx,hy,'H',col,11)
-    + `<text x="130" y="98" text-anchor="middle" font-size="9" fill="${col}" font-style="italic">ethanal (acetaldehyde)</text>`;
+  const [cx,cy]=[105,70];
+  const ox=105, oy=24;    // O above
+  const rx=42,  ry=70;    // R left
+  const hx=158, hy=95;    // H lower-right
+  return db(cx,cy,ox,oy,OC) + b(rx,ry,cx,cy) + b(cx,cy,hx,hy,'#3b82f6',2)
+    + lp(ox,oy,-60) + lp(ox,oy,240)
+    + R(rx,ry) + L(cx,cy,'C',BC,15) + L(ox,oy,'O',OC,16) + L(hx,hy,'H','#3b82f6',14)
+    + `<text x="100" y="112" text-anchor="middle" dominant-baseline="central"
+       font-size="10" font-style="italic" fill="${LP}" font-family="'Inter',sans-serif">carbonyl at chain end</text>`;
 })();
 
-// KETONE: propanone (acetone)  CH₃–C(=O)–CH₃
-// Carbonyl C in centre; =O up; CH₃ groups each side
+// ── Ketone: R–C(=O)–R  (C=O up, two R groups each side) ──────────
+// Match reference: C centre, =O up, R left and R right, angled down
 const svgKetone = (() => {
-  const col='#f97316';
-  const [c1x,c1y]=[40,65],[c2x,c2y]=[120,65],[ox,oy]=[120,25],[c3x,c3y]=[200,65];
-  return bond(c1x,c1y,c2x,c2y,C)
-    + dbond(c2x,c2y,ox,oy,col)
-    + bond(c2x,c2y,c3x,c3y,C)
-    + atom(c1x,c1y,'CH₃',C,10) + atom(c2x,c2y,'C',col,11)
-    + atom(ox,oy,'O',col,12) + atom(c3x,c3y,'CH₃',C,10)
-    + `<text x="130" y="99" text-anchor="middle" font-size="9" fill="${col}" font-style="italic">propanone (acetone)</text>`;
+  const [cx,cy]=[100,70];
+  const ox=100, oy=24;
+  const r1x=38, r1y=96;   // R lower-left
+  const r2x=162, r2y=96;  // R lower-right
+  return db(cx,cy,ox,oy,OC) + b(cx,cy,r1x,r1y) + b(cx,cy,r2x,r2y)
+    + lp(ox,oy,-60) + lp(ox,oy,240)
+    + R(r1x,r1y) + L(cx,cy,'C',BC,15) + L(ox,oy,'O',OC,16) + R(r2x,r2y)
+    + `<text x="100" y="112" text-anchor="middle" dominant-baseline="central"
+       font-size="10" font-style="italic" fill="${LP}" font-family="'Inter',sans-serif">carbonyl flanked by two C groups</text>`;
 })();
 
-// CARBOXYLIC ACID: ethanoic acid  CH₃–C(=O)–O–H
-// Carbonyl C: =O up, –OH to right, chain left
+// ── Carboxylic Acid: R–C(=O)–O–H ─────────────────────────────────
+// Match reference: C centre, =O up, single-bond O lower-right then H,
+// lone pairs on both oxygens
 const svgCarboxylicAcid = (() => {
-  const col='#ef4444';
-  const [c1x,c1y]=[28,68],[c2x,c2y]=[110,68],[o1x,o1y]=[110,26],[o2x,o2y]=[178,68],[hx,hy]=[228,58];
-  return bond(c1x,c1y,c2x,c2y,C)
-    + dbond(c2x,c2y,o1x,o1y,col)
-    + bond(c2x,c2y,o2x,o2y,col)
-    + bond(o2x,o2y,hx,hy,col,1.5)
-    + lonepair(o2x,o2y,270,col)
-    + atom(c1x,c1y,'CH₃',C,10) + atom(c2x,c2y,'C',col,11)
-    + atom(o1x,o1y,'O',col,12) + atom(o2x,o2y,'O',col,12) + atom(hx,hy,'H',col,11)
-    + `<text x="130" y="100" text-anchor="middle" font-size="9" fill="${col}" font-style="italic">ethanoic acid (acetic acid)</text>`;
+  const [cx,cy]=[88,68];
+  const o1x=88,  o1y=24;   // =O double bond up
+  const o2x=144, o2y=90;   // –OH single bond lower-right
+  const hx=184,  hy=70;    // H off the O
+  const rx=30,   ry=68;    // R left
+  return db(cx,cy,o1x,o1y,OC) + b(cx,cy,o2x,o2y,OC) + b(o2x,o2y,hx,hy,OC,2) + b(rx,ry,cx,cy)
+    + lp(o1x,o1y,-55) + lp(o1x,o1y,235)
+    + lp(o2x,o2y,200) + lp(o2x,o2y,320)
+    + R(rx,ry) + L(cx,cy,'C',BC,15)
+    + L(o1x,o1y,'O',OC,16) + L(o2x,o2y,'O',OC,16) + L(hx,hy,'H',OC,13)
+    + `<text x="100" y="112" text-anchor="middle" dominant-baseline="central"
+       font-size="10" font-style="italic" fill="${LP}" font-family="'Inter',sans-serif">carboxyl group −COOH</text>`;
 })();
 
-// AMINE: methylamine  CH₃–N(–H)–H
-// N has two H atoms and lone pair; tetrahedral-ish geometry
+// ── Amine: R–N(–R)(–R)  tertiary shown (3 R groups + lone pair) ──
+// Match reference exactly: N centre, lone pair top, 3 R groups radiating
+// at ~120° intervals downward
 const svgAmine = (() => {
-  const col='#8b5cf6';
-  const [c1x,c1y]=[50,65],[nx,ny]=[135,65],[h1x,h1y]=[185,40],[h2x,h2y]=[195,80];
-  return bond(c1x,c1y,nx,ny,C)
-    + bond(nx,ny,h1x,h1y,col,1.5) + bond(nx,ny,h2x,h2y,col,1.5)
-    + lonepair(nx,ny,180,col)
-    + atom(c1x,c1y,'CH₃',C,10) + atom(nx,ny,'N',col,12)
-    + atom(h1x,h1y,'H',col,11) + atom(h2x,h2y,'H',col,11)
-    + `<text x="130" y="102" text-anchor="middle" font-size="9" fill="${col}" font-style="italic">methylamine (primary amine)</text>`;
+  const [nx,ny]=[100,62];
+  const r1x=36,  r1y=46;   // R upper-left
+  const r2x=164, r2y=46;   // R upper-right
+  const r3x=100, r3y=108;  // R below
+  return b(nx,ny,r1x,r1y,NC) + b(nx,ny,r2x,r2y,NC) + b(nx,ny,r3x,r3y,NC)
+    + lp(nx,ny,-90)   // lone pair top centre
+    + R(r1x,r1y) + R(r2x,r2y) + R(r3x,r3y)
+    + L(nx,ny,'N',NC,17)
+    + `<text x="100" y="6" text-anchor="middle" dominant-baseline="central"
+       font-size="10" font-style="italic" fill="${LP}" font-family="'Inter',sans-serif">tertiary amine R₃N</text>`;
 })();
 
-// ESTER: methyl ethanoate  CH₃–C(=O)–O–CH₃
+// ── Ester: R–C(=O)–O–R  ──────────────────────────────────────────
+// C centre, =O up, bridging O to right then R′, chain R to left
 const svgEster = (() => {
-  const col='#14b8a6';
-  const [c1x,c1y]=[22,68],[c2x,c2y]=[95,68],[o1x,o1y]=[95,28],[o2x,o2y]=[162,68],[c3x,c3y]=[225,55];
-  return bond(c1x,c1y,c2x,c2y,C)
-    + dbond(c2x,c2y,o1x,o1y,col)
-    + bond(c2x,c2y,o2x,o2y,col)
-    + bond(o2x,o2y,c3x,c3y,C)
-    + atom(c1x,c1y,'CH₃',C,9) + atom(c2x,c2y,'C',col,11)
-    + atom(o1x,o1y,'O',col,12) + atom(o2x,o2y,'O',col,12) + atom(c3x,c3y,'CH₃',C,9)
-    + `<text x="130" y="100" text-anchor="middle" font-size="9" fill="${col}" font-style="italic">methyl ethanoate</text>`;
+  const [cx,cy]=[82,68];
+  const o1x=82,  o1y=24;   // =O up
+  const o2x=138, o2y=90;   // bridging O lower-right
+  const r2x=186, r2y=70;   // R′ off bridging O
+  const r1x=26,  r1y=68;   // R left
+  return db(cx,cy,o1x,o1y,OC) + b(cx,cy,o2x,o2y,OC) + b(o2x,o2y,r2x,r2y) + b(r1x,r1y,cx,cy)
+    + lp(o1x,o1y,-55) + lp(o1x,o1y,235)
+    + lp(o2x,o2y,200)
+    + R(r1x,r1y) + L(cx,cy,'C',BC,15)
+    + L(o1x,o1y,'O',OC,16) + L(o2x,o2y,'O',OC,16) + R(r2x,r2y)
+    + `<text x="100" y="112" text-anchor="middle" dominant-baseline="central"
+       font-size="10" font-style="italic" fill="${LP}" font-family="'Inter',sans-serif">ester linkage −COO−</text>`;
 })();
 
-// ETHER: methoxymethane (dimethyl ether)  CH₃–O–CH₃
-// O in centre, bond angle ~111° (tetrahedral-ish)
+// ── Ether: R–O–R  (bond angle ~111°, 2 lone pairs on O) ──────────
+// Match reference: O centre, R upper-left, R upper-right, lone pairs lower
 const svgEther = (() => {
-  const col='#eab308';
-  const [c1x,c1y]=[42,65],[ox,oy]=[130,55],[c2x,c2y]=[218,65];
-  return bond(c1x,c1y,ox,oy,C)
-    + bond(ox,oy,c2x,c2y,C)
-    + lonepair(ox,oy,280,col) + lonepair(ox,oy,350,col)
-    + atom(c1x,c1y,'CH₃',C,10) + atom(ox,oy,'O',col,12) + atom(c2x,c2y,'CH₃',C,10)
-    + `<text x="130" y="92" text-anchor="middle" font-size="9" fill="${col}" font-style="italic">methoxymethane (dimethyl ether)</text>`;
+  const [ox,oy]=[100,68];
+  const r1x=38, r1y=44;   // R upper-left
+  const r2x=162, r2y=44;  // R upper-right
+  return b(ox,oy,r1x,r1y) + b(ox,oy,r2x,r2y)
+    + lp(ox,oy,270)   // lone pair bottom-left
+    + lp(ox,oy,350)   // lone pair bottom-right
+    + R(r1x,r1y) + R(r2x,r2y) + L(ox,oy,'O',OC,17)
+    + `<text x="100" y="108" text-anchor="middle" dominant-baseline="central"
+       font-size="10" font-style="italic" fill="${LP}" font-family="'Inter',sans-serif">R−O−R, ~111° bond angle</text>`;
 })();
+
+
 
 const ORGANIC_GROUPS = [
   { name:"Alkane",          suffix:"-ane",       formula:"CₙH₂ₙ₊₂",  functional:"C−C single bonds only",
@@ -3219,7 +3293,7 @@ function buildOrganicPanel() {
         <span class="org-badge" style="background:color-mix(in srgb,${g.badgeColor} 20%,var(--surface2));
           color:${g.badgeColor};border:1px solid ${g.badgeColor};">${g.badge}</span>
       </div>
-      <svg class="org-svg" viewBox="0 0 260 110" xmlns="http://www.w3.org/2000/svg">${g.svg}</svg>
+      <svg class="org-svg" viewBox="0 0 200 120" xmlns="http://www.w3.org/2000/svg">${g.svg}</svg>
       <div class="org-formula">Formula: ${g.formula} &nbsp;|&nbsp; Suffix: ${g.suffix}</div>
       <div class="org-name-rules"><strong>Functional group:</strong> ${g.functional}</div>
       <div class="org-name-rules" style="margin-top:3px;"><strong>Naming:</strong> ${g.namingTip}</div>
