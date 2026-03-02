@@ -2667,205 +2667,585 @@ document.getElementById("closeElectrochem").addEventListener("click", () => clos
 // ═══════════════════════════════════════════════════════════════════
 // ── FEATURE 6: ORGANIC FUNCTIONAL GROUPS ──────────────────────────
 // ═══════════════════════════════════════════════════════════════════
+//
+// SVG conventions used throughout:
+//   viewBox="0 0 260 110"  – landscape card format
+//   Atoms drawn as text labels at bond endpoints (skeletal-style)
+//   C–C single bonds: plain lines at ~109.5° tetrahedral angles (zigzag)
+//   C=C double bond: two parallel lines, bond length ~1.34 Å represented wider
+//   C≡C triple bond: three parallel lines
+//   C=O carbonyl: double bond drawn upward from carbon
+//   Bond colours: carbon skeleton #94a3b8, functional group highlighted
+//   Atom labels: H atoms shown explicitly where needed for clarity
+//   Lone pairs shown on O and N where pedagogically useful
+
+const C  = '#94a3b8';   // carbon skeleton
+const BG = 'transparent';
+
+// ── Reusable SVG helpers ──────────────────────────────────────────
+// atom(x,y,label,color,size) — centred text atom label
+const atom = (x,y,lbl,col,sz=11) =>
+  `<text x="${x}" y="${y+4}" text-anchor="middle" dominant-baseline="middle"
+   font-family="'Space Mono',monospace" font-size="${sz}" font-weight="700"
+   fill="${col}">${lbl}</text>`;
+
+// bond(x1,y1,x2,y2,col,w=2) — single bond line
+const bond = (x1,y1,x2,y2,col=C,w=2) =>
+  `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}"
+   stroke="${col}" stroke-width="${w}" stroke-linecap="round"/>`;
+
+// dbond(x1,y1,x2,y2,col) — double bond (two parallel lines offset perpendicular)
+function dbond(x1,y1,x2,y2,col=C) {
+  const dx=x2-x1, dy=y2-y1;
+  const len=Math.sqrt(dx*dx+dy*dy)||1;
+  const ox=(-dy/len)*2.8, oy=(dx/len)*2.8;
+  return bond(x1+ox,y1+oy,x2+ox,y2+oy,col,2)
+       + bond(x1-ox,y1-oy,x2-ox,y2-oy,col,2);
+}
+
+// tbond(x1,y1,x2,y2,col) — triple bond
+function tbond(x1,y1,x2,y2,col=C) {
+  const dx=x2-x1, dy=y2-y1;
+  const len=Math.sqrt(dx*dx+dy*dy)||1;
+  const ox=(-dy/len)*3.5, oy=(dx/len)*3.5;
+  return bond(x1+ox,y1+oy,x2+ox,y2+oy,col,1.8)
+       + bond(x1,y1,x2,y2,col,1.8)
+       + bond(x1-ox,y1-oy,x2-ox,y2-oy,col,1.8);
+}
+
+// lonepair(x,y,angle_deg,col) — two dots representing a lone pair
+function lonepair(x,y,angle,col) {
+  const r=Math.PI*angle/180;
+  const d=6;
+  const x1=x+d*Math.cos(r-0.3), y1=y+d*Math.sin(r-0.3);
+  const x2=x+d*Math.cos(r+0.3), y2=y+d*Math.sin(r+0.3);
+  return `<circle cx="${x1}" cy="${y1}" r="1.6" fill="${col}"/>
+          <circle cx="${x2}" cy="${y2}" r="1.6" fill="${col}"/>`;
+}
+
+// ── Per-group SVG diagrams (viewBox 0 0 260 110) ──────────────────
+
+// ALKANE: propane skeleton  H₃C–CH₂–CH₃  zigzag
+// Carbons at (30,55) (100,35) (170,55) — tetrahedral zigzag
+const svgAlkane = (() => {
+  const [c1x,c1y]=[30,55], [c2x,c2y]=[100,38], [c3x,c3y]=[170,55];
+  return bond(c1x,c1y,c2x,c2y) + bond(c2x,c2y,c3x,c3y)
+    + atom(c1x,c1y,'CH₃',C,10) + atom(c2x,c2y,'CH₂',C,10) + atom(c3x,c3y,'CH₃',C,10)
+    + `<text x="130" y="88" text-anchor="middle" font-size="9" fill="${C}" font-style="italic">propane (C₃H₈)</text>`;
+})();
+
+// ALKENE: but-2-ene  CH₃–CH=CH–CH₃  with correct planar geometry around C=C
+// C1(20,55) C2(80,55) =C3(140,55) C4(200,55) — horizontal with H positions
+const svgAlkene = (() => {
+  const col='#22c55e';
+  // C1-C2 single, C2=C3 double, C3-C4 single, all horizontal for clarity
+  // Show explicit H on sp2 carbons
+  const [c1x,c1y]=[28,58], [c2x,c2y]=[88,58], [c3x,c3y]=[152,58], [c4x,c4y]=[212,58];
+  return bond(c1x,c1y,c2x,c2y,C)
+    + dbond(c2x,c2y,c3x,c3y,col)
+    + bond(c3x,c3y,c4x,c4y,C)
+    // H atoms above/below sp2 carbons to show trigonal planar
+    + bond(c2x,c2y,c2x,c2y-24,col,1.5)
+    + bond(c3x,c3y,c3x,c3y+24,col,1.5)
+    + atom(c2x,c2y-30,'H',col,10)
+    + atom(c3x,c3y+30,'H',col,10)
+    + atom(c1x,c1y,'CH₃',C,9) + atom(c2x,c2y,'C',col,11) + atom(c3x,c3y,'C',col,11) + atom(c4x,c4y,'CH₃',C,9)
+    + `<text x="130" y="100" text-anchor="middle" font-size="9" fill="${col}" font-style="italic">but-2-ene</text>`;
+})();
+
+// ALKYNE: propyne  CH₃–C≡C–H  linear (sp carbons 180°)
+const svgAlkyne = (() => {
+  const col='#3b82f6';
+  const [c1x,c1y]=[35,55], [c2x,c2y]=[105,55], [c3x,c3y]=[165,55], [hx,hy]=[220,55];
+  return bond(c1x,c1y,c2x,c2y,C)
+    + tbond(c2x,c2y,c3x,c3y,col)
+    + bond(c3x,c3y,hx,hy,col,1.5)
+    + atom(c1x,c1y,'CH₃',C,10) + atom(c2x,c2y,'C',col,11) + atom(c3x,c3y,'C',col,11) + atom(hx,hy,'H',col,11)
+    + `<text x="130" y="90" text-anchor="middle" font-size="9" fill="${col}" font-style="italic">propyne (linear sp carbons)</text>`;
+})();
+
+// ALCOHOL: ethanol  CH₃–CH₂–O–H  zigzag then O-H
+const svgAlcohol = (() => {
+  const col='#ef4444';
+  const [c1x,c1y]=[30,55],[c2x,c2y]=[100,38],[ox,oy]=[160,55],[hx,hy]=[215,45];
+  return bond(c1x,c1y,c2x,c2y,C)
+    + bond(c2x,c2y,ox,oy,col)
+    + bond(ox,oy,hx,hy,col,1.5)
+    + lonepair(ox,oy,270,col) + lonepair(ox,oy,210,col)
+    + atom(c1x,c1y,'CH₃',C,10) + atom(c2x,c2y,'CH₂',C,10)
+    + atom(ox,oy,'O',col,12) + atom(hx,hy,'H',col,11)
+    + `<text x="130" y="92" text-anchor="middle" font-size="9" fill="${col}" font-style="italic">ethanol</text>`;
+})();
+
+// ALDEHYDE: ethanal  CH₃–C(=O)–H
+// Carbonyl C in centre; =O goes up, H goes right, chain left
+const svgAldehyde = (() => {
+  const col='#f97316';
+  const [c1x,c1y]=[40,60],[c2x,c2y]=[120,60],[ox,oy]=[120,22],[hx,hy]=[190,60];
+  return bond(c1x,c1y,c2x,c2y,C)
+    + dbond(c2x,c2y,ox,oy,col)
+    + bond(c2x,c2y,hx,hy,col,1.5)
+    + atom(c1x,c1y,'CH₃',C,10) + atom(c2x,c2y,'C',col,11)
+    + atom(ox,oy,'O',col,12) + atom(hx,hy,'H',col,11)
+    + `<text x="130" y="98" text-anchor="middle" font-size="9" fill="${col}" font-style="italic">ethanal (acetaldehyde)</text>`;
+})();
+
+// KETONE: propanone (acetone)  CH₃–C(=O)–CH₃
+// Carbonyl C in centre; =O up; CH₃ groups each side
+const svgKetone = (() => {
+  const col='#f97316';
+  const [c1x,c1y]=[40,65],[c2x,c2y]=[120,65],[ox,oy]=[120,25],[c3x,c3y]=[200,65];
+  return bond(c1x,c1y,c2x,c2y,C)
+    + dbond(c2x,c2y,ox,oy,col)
+    + bond(c2x,c2y,c3x,c3y,C)
+    + atom(c1x,c1y,'CH₃',C,10) + atom(c2x,c2y,'C',col,11)
+    + atom(ox,oy,'O',col,12) + atom(c3x,c3y,'CH₃',C,10)
+    + `<text x="130" y="99" text-anchor="middle" font-size="9" fill="${col}" font-style="italic">propanone (acetone)</text>`;
+})();
+
+// CARBOXYLIC ACID: ethanoic acid  CH₃–C(=O)–O–H
+// Carbonyl C: =O up, –OH to right, chain left
+const svgCarboxylicAcid = (() => {
+  const col='#ef4444';
+  const [c1x,c1y]=[28,68],[c2x,c2y]=[110,68],[o1x,o1y]=[110,26],[o2x,o2y]=[178,68],[hx,hy]=[228,58];
+  return bond(c1x,c1y,c2x,c2y,C)
+    + dbond(c2x,c2y,o1x,o1y,col)
+    + bond(c2x,c2y,o2x,o2y,col)
+    + bond(o2x,o2y,hx,hy,col,1.5)
+    + lonepair(o2x,o2y,270,col)
+    + atom(c1x,c1y,'CH₃',C,10) + atom(c2x,c2y,'C',col,11)
+    + atom(o1x,o1y,'O',col,12) + atom(o2x,o2y,'O',col,12) + atom(hx,hy,'H',col,11)
+    + `<text x="130" y="100" text-anchor="middle" font-size="9" fill="${col}" font-style="italic">ethanoic acid (acetic acid)</text>`;
+})();
+
+// AMINE: methylamine  CH₃–N(–H)–H
+// N has two H atoms and lone pair; tetrahedral-ish geometry
+const svgAmine = (() => {
+  const col='#8b5cf6';
+  const [c1x,c1y]=[50,65],[nx,ny]=[135,65],[h1x,h1y]=[185,40],[h2x,h2y]=[195,80];
+  return bond(c1x,c1y,nx,ny,C)
+    + bond(nx,ny,h1x,h1y,col,1.5) + bond(nx,ny,h2x,h2y,col,1.5)
+    + lonepair(nx,ny,180,col)
+    + atom(c1x,c1y,'CH₃',C,10) + atom(nx,ny,'N',col,12)
+    + atom(h1x,h1y,'H',col,11) + atom(h2x,h2y,'H',col,11)
+    + `<text x="130" y="102" text-anchor="middle" font-size="9" fill="${col}" font-style="italic">methylamine (primary amine)</text>`;
+})();
+
+// ESTER: methyl ethanoate  CH₃–C(=O)–O–CH₃
+const svgEster = (() => {
+  const col='#14b8a6';
+  const [c1x,c1y]=[22,68],[c2x,c2y]=[95,68],[o1x,o1y]=[95,28],[o2x,o2y]=[162,68],[c3x,c3y]=[225,55];
+  return bond(c1x,c1y,c2x,c2y,C)
+    + dbond(c2x,c2y,o1x,o1y,col)
+    + bond(c2x,c2y,o2x,o2y,col)
+    + bond(o2x,o2y,c3x,c3y,C)
+    + atom(c1x,c1y,'CH₃',C,9) + atom(c2x,c2y,'C',col,11)
+    + atom(o1x,o1y,'O',col,12) + atom(o2x,o2y,'O',col,12) + atom(c3x,c3y,'CH₃',C,9)
+    + `<text x="130" y="100" text-anchor="middle" font-size="9" fill="${col}" font-style="italic">methyl ethanoate</text>`;
+})();
+
+// ETHER: methoxymethane (dimethyl ether)  CH₃–O–CH₃
+// O in centre, bond angle ~111° (tetrahedral-ish)
+const svgEther = (() => {
+  const col='#eab308';
+  const [c1x,c1y]=[42,65],[ox,oy]=[130,55],[c2x,c2y]=[218,65];
+  return bond(c1x,c1y,ox,oy,C)
+    + bond(ox,oy,c2x,c2y,C)
+    + lonepair(ox,oy,280,col) + lonepair(ox,oy,350,col)
+    + atom(c1x,c1y,'CH₃',C,10) + atom(ox,oy,'O',col,12) + atom(c2x,c2y,'CH₃',C,10)
+    + `<text x="130" y="92" text-anchor="middle" font-size="9" fill="${col}" font-style="italic">methoxymethane (dimethyl ether)</text>`;
+})();
 
 const ORGANIC_GROUPS = [
-  {
-    name:"Alkane", suffix:"-ane", prefix:"",
-    formula:"CₙH₂ₙ₊₂", functional:"C−C single bonds only",
-    badge:"Saturated", badgeColor:"#94a3b8",
+  { name:"Alkane",          suffix:"-ane",       formula:"CₙH₂ₙ₊₂",  functional:"C−C single bonds only",
+    badge:"Saturated",      badgeColor:"#94a3b8", svg:svgAlkane,
     description:"Fully saturated hydrocarbons. Nonpolar, low reactivity. Combust in O₂.",
     examples:"methane (CH₄), ethane (C₂H₆), propane (C₃H₈), butane (C₄H₁₀)",
-    namingTip:"Count carbons: 1=meth, 2=eth, 3=prop, 4=but, 5=pent, 6=hex + -ane",
-    svgContent:`<text x="10" y="45" font-size="11" fill="#94a3b8">H₃C</text>
-      <line x1="50" y1="40" x2="80" y2="40" stroke="#94a3b8" stroke-width="2"/>
-      <text x="82" y="45" font-size="11" fill="#94a3b8">CH₂</text>
-      <line x1="115" y1="40" x2="145" y2="40" stroke="#94a3b8" stroke-width="2"/>
-      <text x="147" y="45" font-size="11" fill="#94a3b8">CH₃</text>`
-  },
-  {
-    name:"Alkene", suffix:"-ene", prefix:"",
-    formula:"CₙH₂ₙ", functional:"C=C double bond",
-    badge:"Unsaturated", badgeColor:"#22c55e",
-    description:"One C=C double bond. More reactive than alkanes — addition reactions.",
-    examples:"ethene (CH₂=CH₂), propene, but-1-ene, but-2-ene",
+    namingTip:"Count carbons: 1=meth, 2=eth, 3=prop, 4=but, 5=pent, 6=hex + -ane" },
+
+  { name:"Alkene",          suffix:"-ene",       formula:"CₙH₂ₙ",     functional:"C=C double bond",
+    badge:"Unsaturated",    badgeColor:"#22c55e", svg:svgAlkene,
+    description:"C=C double bond. Planar geometry around double bond (sp² hybridisation, 120°). Addition reactions with H₂, HX, X₂, H₂O.",
+    examples:"ethene (CH₂=CH₂), propene, but-1-ene, (E)-but-2-ene, (Z)-but-2-ene",
     namingTip:"Number chain from end nearest double bond; indicate position: but-2-ene",
-    svgContent:`<text x="5" y="45" font-size="11" fill="#22c55e">H₂C</text>
-      <line x1="42" y1="37" x2="75" y2="37" stroke="#22c55e" stroke-width="2"/>
-      <line x1="42" y1="43" x2="75" y2="43" stroke="#22c55e" stroke-width="2"/>
-      <text x="77" y="45" font-size="11" fill="#22c55e">CH₂</text>`
-  },
-  {
-    name:"Alkyne", suffix:"-yne", prefix:"",
-    formula:"CₙH₂ₙ₋₂", functional:"C≡C triple bond",
-    badge:"Unsaturated", badgeColor:"#3b82f6",
-    description:"One C≡C triple bond. High reactivity — addition reactions with H₂, HX, X₂.",
+    extraBtns: true },
+
+  { name:"Alkyne",          suffix:"-yne",       formula:"CₙH₂ₙ₋₂",  functional:"C≡C triple bond",
+    badge:"Unsaturated",    badgeColor:"#3b82f6", svg:svgAlkyne,
+    description:"C≡C triple bond. Linear geometry (sp hybridisation, 180°). Very reactive — two sequential addition reactions possible.",
     examples:"ethyne/acetylene (HC≡CH), propyne, but-1-yne",
-    namingTip:"Longest chain containing triple bond; lowest possible position number",
-    svgContent:`<text x="5" y="45" font-size="11" fill="#3b82f6">HC</text>
-      <line x1="30" y1="35" x2="75" y2="35" stroke="#3b82f6" stroke-width="2"/>
-      <line x1="30" y1="40" x2="75" y2="40" stroke="#3b82f6" stroke-width="2"/>
-      <line x1="30" y1="45" x2="75" y2="45" stroke="#3b82f6" stroke-width="2"/>
-      <text x="77" y="45" font-size="11" fill="#3b82f6">CH</text>`
-  },
-  {
-    name:"Alcohol", suffix:"-ol", prefix:"hydroxy-",
-    formula:"R−OH", functional:"−OH (hydroxyl)",
-    badge:"Oxygen group", badgeColor:"#ef4444",
-    description:"−OH group. Polar, H-bonding → higher bp. Soluble in water for shorter chains.",
+    namingTip:"Longest chain containing triple bond; lowest possible position number" },
+
+  { name:"Alcohol",         suffix:"-ol",        formula:"R−OH",      functional:"−OH (hydroxyl)",
+    badge:"Oxygen group",   badgeColor:"#ef4444", svg:svgAlcohol,
+    description:"−OH group. Polar; O lone pairs accept/donate H-bonds → higher bp than alkanes. Miscible with water for shorter chains.",
     examples:"methanol (CH₃OH), ethanol (C₂H₅OH), propan-1-ol, propan-2-ol",
-    namingTip:"Number chain so −OH gets lowest number; add -ol suffix",
-    svgContent:`<text x="5" y="45" font-size="11" fill="#94a3b8">R</text>
-      <line x1="22" y1="40" x2="55" y2="40" stroke="#94a3b8" stroke-width="2"/>
-      <circle cx="68" cy="40" r="12" fill="rgba(239,68,68,0.2)" stroke="#ef4444" stroke-width="1.5"/>
-      <text x="68" y="44" text-anchor="middle" font-size="10" fill="#ef4444" font-weight="bold">O</text>
-      <line x1="80" y1="40" x2="105" y2="40" stroke="#ef4444" stroke-width="2"/>
-      <text x="107" y="44" font-size="10" fill="#ef4444">H</text>`
-  },
-  {
-    name:"Aldehyde", suffix:"-al", prefix:"formyl-",
-    formula:"R−CHO", functional:"−CHO (carbonyl at end)",
-    badge:"Carbonyl group", badgeColor:"#f97316",
-    description:"Carbonyl C at chain end with one H. Polar. Can be oxidised to carboxylic acid.",
+    namingTip:"Number chain so −OH gets lowest number; add -ol suffix" },
+
+  { name:"Aldehyde",        suffix:"-al",        formula:"R−CHO",     functional:"−CHO (carbonyl at chain end)",
+    badge:"Carbonyl",       badgeColor:"#f97316", svg:svgAldehyde,
+    description:"Carbonyl C at chain end bearing one H. Polar. Readily oxidised to carboxylic acid; reduced to primary alcohol.",
     examples:"methanal/formaldehyde (HCHO), ethanal (CH₃CHO), propanal",
-    namingTip:"Always at carbon-1. Use -al suffix; no position number needed.",
-    svgContent:`<text x="5" y="45" font-size="11" fill="#94a3b8">R</text>
-      <line x1="22" y1="40" x2="55" y2="40" stroke="#94a3b8" stroke-width="2"/>
-      <circle cx="70" cy="40" r="13" fill="rgba(249,115,22,0.2)" stroke="#f97316" stroke-width="1.5"/>
-      <text x="70" y="44" text-anchor="middle" font-size="10" fill="#f97316" font-weight="bold">C</text>
-      <line x1="70" y1="27" x2="70" y2="15" stroke="#f97316" stroke-width="2"/>
-      <text x="70" y="13" text-anchor="middle" font-size="10" fill="#f97316">O</text>
-      <line x1="83" y1="40" x2="105" y2="40" stroke="#f97316" stroke-width="2"/>
-      <text x="107" y="44" font-size="10" fill="#f97316">H</text>`
-  },
-  {
-    name:"Ketone", suffix:"-one", prefix:"oxo-",
-    formula:"R−CO−R'", functional:"C=O (carbonyl in chain)",
-    badge:"Carbonyl group", badgeColor:"#f97316",
-    description:"Carbonyl C bonded to two carbon groups. Cannot be easily oxidised further.",
-    examples:"propanone/acetone (CH₃COCH₃), butanone (MEK)",
-    namingTip:"Number chain; give C=O lowest possible number: pentan-2-one",
-    svgContent:`<text x="5" y="45" font-size="11" fill="#94a3b8">R</text>
-      <line x1="22" y1="40" x2="52" y2="40" stroke="#94a3b8" stroke-width="2"/>
-      <circle cx="65" cy="40" r="13" fill="rgba(249,115,22,0.2)" stroke="#f97316" stroke-width="1.5"/>
-      <text x="65" y="44" text-anchor="middle" font-size="10" fill="#f97316" font-weight="bold">C</text>
-      <line x1="65" y1="27" x2="65" y2="15" stroke="#f97316" stroke-width="2"/>
-      <text x="65" y="13" text-anchor="middle" font-size="10" fill="#f97316">O</text>
-      <line x1="78" y1="40" x2="108" y2="40" stroke="#94a3b8" stroke-width="2"/>
-      <text x="110" y="44" font-size="11" fill="#94a3b8">R'</text>`
-  },
-  {
-    name:"Carboxylic Acid", suffix:"-oic acid", prefix:"carboxy-",
-    formula:"R−COOH", functional:"−COOH (carboxyl)",
-    badge:"Acidic", badgeColor:"#ef4444",
-    description:"Acidic −COOH group. Weak acid; H-bonding gives high bp; forms esters/amides.",
+    namingTip:"Always at C-1; use -al suffix — no position number needed" },
+
+  { name:"Ketone",          suffix:"-one",       formula:"R−CO−R′",   functional:"C=O carbonyl in chain",
+    badge:"Carbonyl",       badgeColor:"#f97316", svg:svgKetone,
+    description:"Carbonyl C flanked by two carbon groups. Not easily oxidised further (no α-H on carbonyl C). Reduced to secondary alcohol.",
+    examples:"propanone/acetone (CH₃COCH₃), butanone (MEK), pentan-3-one",
+    namingTip:"Number chain; give C=O lowest possible number: pentan-2-one" },
+
+  { name:"Carboxylic Acid", suffix:"-oic acid",  formula:"R−COOH",    functional:"−COOH (carboxyl)",
+    badge:"Acidic",         badgeColor:"#ef4444", svg:svgCarboxylicAcid,
+    description:"Acidic −COOH group (pKa ~4-5). Strong H-bonding → very high bp; dimerise in solution. Forms esters with alcohols; amides with amines.",
     examples:"methanoic acid (HCOOH), ethanoic/acetic acid (CH₃COOH), propanoic acid",
-    namingTip:"Always at C-1; chain includes the COOH carbon: propanoic = 3C total",
-    svgContent:`<text x="5" y="45" font-size="11" fill="#94a3b8">R</text>
-      <line x1="22" y1="40" x2="52" y2="40" stroke="#94a3b8" stroke-width="2"/>
-      <circle cx="65" cy="40" r="13" fill="rgba(239,68,68,0.15)" stroke="#ef4444" stroke-width="1.5"/>
-      <text x="65" y="44" text-anchor="middle" font-size="10" fill="#ef4444" font-weight="bold">C</text>
-      <line x1="65" y1="27" x2="65" y2="15" stroke="#ef4444" stroke-width="2"/>
-      <text x="65" y="13" text-anchor="middle" font-size="10" fill="#ef4444">O</text>
-      <line x1="78" y1="40" x2="100" y2="40" stroke="#ef4444" stroke-width="2"/>
-      <circle cx="113" cy="40" r="11" fill="rgba(239,68,68,0.2)" stroke="#ef4444" stroke-width="1.5"/>
-      <text x="113" y="44" text-anchor="middle" font-size="9" fill="#ef4444">OH</text>`
-  },
-  {
-    name:"Amine", suffix:"-amine", prefix:"amino-",
-    formula:"R−NH₂", functional:"−NH₂ (amino)",
-    badge:"Basic/N group", badgeColor:"#8b5cf6",
-    description:"Basic (accept protons). Lone pair on N. Lower bp than alcohols but higher than alkanes.",
+    namingTip:"Always at C-1; chain includes the COOH carbon: propanoic acid = 3C total" },
+
+  { name:"Amine",           suffix:"-amine",     formula:"R−NH₂",     functional:"−NH₂ (amino group)",
+    badge:"Basic/N group",  badgeColor:"#8b5cf6", svg:svgAmine,
+    description:"Basic — lone pair on N accepts protons. Lower bp than alcohols but higher than alkanes of same MW. Primary (RNH₂), secondary (R₂NH), tertiary (R₃N).",
     examples:"methylamine (CH₃NH₂), ethylamine, aniline (C₆H₅NH₂)",
-    namingTip:"Primary: R-NH₂; Secondary: R-NH-R'; Tertiary: R₃N. Name with -amine suffix.",
-    svgContent:`<text x="5" y="45" font-size="11" fill="#94a3b8">R</text>
-      <line x1="22" y1="40" x2="55" y2="40" stroke="#94a3b8" stroke-width="2"/>
-      <circle cx="70" cy="40" r="13" fill="rgba(139,92,246,0.2)" stroke="#8b5cf6" stroke-width="1.5"/>
-      <text x="70" y="44" text-anchor="middle" font-size="10" fill="#8b5cf6" font-weight="bold">N</text>
-      <line x1="70" y1="27" x2="55" y2="15" stroke="#8b5cf6" stroke-width="1.5"/>
-      <text x="52" y="13" font-size="9" fill="#8b5cf6">H</text>
-      <line x1="70" y1="27" x2="85" y2="15" stroke="#8b5cf6" stroke-width="1.5"/>
-      <text x="83" y="13" font-size="9" fill="#8b5cf6">H</text>`
-  },
-  {
-    name:"Ester", suffix:"-oate", prefix:"",
-    formula:"R−COO−R'", functional:"−COO− (ester linkage)",
-    badge:"Ether-like", badgeColor:"#14b8a6",
-    description:"Formed by acid + alcohol condensation (esterification). Fruity aromas. Hydrolysable.",
+    namingTip:"Primary: alkyl + amine. Secondary/tertiary: N-methyl prefix. Aromatic: aniline" },
+
+  { name:"Ester",           suffix:"-oate",      formula:"R−COO−R′",  functional:"−COO− (ester linkage)",
+    badge:"Ether-like",     badgeColor:"#14b8a6", svg:svgEster,
+    description:"Formed by esterification (acid + alcohol, −H₂O). Fruity aromas. Hydrolysable by acid or base (saponification). No H-bond donor → lower bp than acids.",
     examples:"methyl ethanoate (CH₃COOCH₃), ethyl ethanoate (nail polish remover)",
-    namingTip:"Alkyl (from alcohol) + name of acid as -oate: ethyl ethanoate = ethanol + ethanoic acid",
-    svgContent:`<text x="5" y="45" font-size="11" fill="#94a3b8">R</text>
-      <line x1="22" y1="40" x2="48" y2="40" stroke="#94a3b8" stroke-width="2"/>
-      <circle cx="60" cy="40" r="11" fill="rgba(20,184,166,0.15)" stroke="#14b8a6" stroke-width="1.5"/>
-      <text x="60" y="44" text-anchor="middle" font-size="9" fill="#14b8a6" font-weight="bold">C</text>
-      <line x1="60" y1="29" x2="60" y2="17" stroke="#14b8a6" stroke-width="2"/>
-      <text x="60" y="15" text-anchor="middle" font-size="9" fill="#14b8a6">O</text>
-      <line x1="71" y1="40" x2="92" y2="40" stroke="#14b8a6" stroke-width="2"/>
-      <circle cx="104" cy="40" r="11" fill="rgba(20,184,166,0.15)" stroke="#14b8a6" stroke-width="1.5"/>
-      <text x="104" y="44" text-anchor="middle" font-size="9" fill="#14b8a6">O</text>
-      <line x1="115" y1="40" x2="135" y2="40" stroke="#94a3b8" stroke-width="2"/>
-      <text x="137" y="44" font-size="11" fill="#94a3b8">R'</text>`
-  },
-  {
-    name:"Ether", suffix:"", prefix:"",
-    formula:"R−O−R'", functional:"C−O−C linkage",
-    badge:"Weakly polar", badgeColor:"#eab308",
-    description:"Low reactivity. Diethyl ether is a historic anaesthetic. Good organic solvent.",
-    examples:"methoxymethane (dimethyl ether), ethoxyethane (diethyl ether)",
-    namingTip:"IUPAC: alkoxy- prefix on longest chain. Common: list both alkyl groups + ether",
-    svgContent:`<text x="5" y="45" font-size="11" fill="#94a3b8">R</text>
-      <line x1="22" y1="40" x2="52" y2="40" stroke="#94a3b8" stroke-width="2"/>
-      <circle cx="66" cy="40" r="13" fill="rgba(234,179,8,0.2)" stroke="#eab308" stroke-width="1.5"/>
-      <text x="66" y="44" text-anchor="middle" font-size="10" fill="#eab308" font-weight="bold">O</text>
-      <line x1="79" y1="40" x2="108" y2="40" stroke="#94a3b8" stroke-width="2"/>
-      <text x="110" y="44" font-size="11" fill="#94a3b8">R'</text>`
-  },
+    namingTip:"Alkyl (from alcohol) + acid root as -oate: ethyl ethanoate = ethanol + ethanoic acid" },
+
+  { name:"Ether",           suffix:"–",          formula:"R−O−R′",    functional:"C−O−C linkage",
+    badge:"Weakly polar",   badgeColor:"#eab308", svg:svgEther,
+    description:"O bond angle ~111°. Low reactivity (no reactive H). Good organic solvent; immiscible with water for longer chains. Diethyl ether: historic anaesthetic.",
+    examples:"methoxymethane (dimethyl ether), ethoxyethane (diethyl ether, Et₂O)",
+    namingTip:"IUPAC: alkoxy- prefix on longest chain. Common name: list both alkyl groups + ether" },
 ];
+
+// ── E-Z and cis/trans modal windows ─────────────────────────────
+
+function showEZModal() {
+  let m = document.getElementById('ezModal');
+  if (!m) {
+    m = document.createElement('div');
+    m.id = 'ezModal';
+    m.className = 'panel-overlay';
+    m.innerHTML = `
+    <div class="panel-box" style="width:760px">
+      <div class="panel-header">
+        <h2>🔀 E-Z Naming (IUPAC)</h2>
+        <button class="panel-close" id="closeEZ">✕</button>
+      </div>
+      <div class="panel-body">
+        <div class="keq-section">
+          <div class="keq-section-title">📐 The Rule</div>
+          <div class="keq-card">
+            <div class="keq-desc" style="font-size:0.82rem;line-height:1.8;">
+              For each carbon of the C=C double bond, assign <strong>priority</strong> to the two substituents
+              using the <strong>Cahn–Ingold–Prelog (CIP) rules</strong> — higher atomic number = higher priority.
+              If both higher-priority groups are on the <em>same</em> side → <strong>Z</strong> (from German <em>zusammen</em>, together).
+              If they are on <em>opposite</em> sides → <strong>E</strong> (from German <em>entgegen</em>, opposite).
+            </div>
+          </div>
+        </div>
+
+        <div class="keq-section">
+          <div class="keq-section-title">📊 CIP Priority Rules (summary)</div>
+          <table class="keq-table">
+            <thead><tr><th>Rule</th><th>Detail</th><th>Example</th></tr></thead>
+            <tbody>
+              <tr><td>1. Atomic number</td><td>Higher Z = higher priority</td><td>Br &gt; Cl &gt; O &gt; N &gt; C &gt; H</td></tr>
+              <tr><td>2. Tie? Go to next atom</td><td>Compare atoms one bond further out, largest first</td><td>–CH₂Br vs –CH₂Cl: Br wins at second atom</td></tr>
+              <tr><td>3. Double/triple bonds</td><td>Phantom atoms: C=O counts as C bonded to (O,O); O=C bonded to (C,C)</td><td>–CHO phantom: C has O,O,H attached</td></tr>
+              <tr><td>4. Isotopes</td><td>Higher mass isotope = higher priority</td><td>D (²H) &gt; H (¹H)</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="keq-section">
+          <div class="keq-section-title">🎨 Visual Examples</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
+            <div class="keq-card" style="text-align:center;">
+              <div style="font-weight:700;color:#22c55e;margin-bottom:8px;">(Z)-but-2-ene</div>
+              <svg viewBox="0 0 200 120" width="200" height="120" xmlns="http://www.w3.org/2000/svg">
+                <!-- Double bond -->
+                <line x1="80" y1="58" x2="120" y2="58" stroke="#22c55e" stroke-width="2"/>
+                <line x1="80" y1="64" x2="120" y2="64" stroke="#22c55e" stroke-width="2"/>
+                <!-- Left carbon -->
+                <text x="80" y="64" text-anchor="middle" font-size="13" font-weight="700" fill="#22c55e" font-family="monospace">C</text>
+                <!-- Right carbon -->
+                <text x="120" y="64" text-anchor="middle" font-size="13" font-weight="700" fill="#22c55e" font-family="monospace">C</text>
+                <!-- Left carbon: CH₃ up-left (high priority), H down-left (low priority) -->
+                <line x1="80" y1="58" x2="45" y2="35" stroke="#94a3b8" stroke-width="2"/>
+                <line x1="80" y1="64" x2="45" y2="87" stroke="#94a3b8" stroke-width="1.5"/>
+                <text x="36" y="34" text-anchor="middle" font-size="11" fill="#ef4444" font-weight="700" font-family="monospace">CH₃</text>
+                <text x="36" y="92" text-anchor="middle" font-size="11" fill="#94a3b8" font-family="monospace">H</text>
+                <text x="56" y="28" font-size="9" fill="#ef4444">① high</text>
+                <!-- Right carbon: CH₃ up-right (high priority), H down-right (low priority) -->
+                <line x1="120" y1="58" x2="155" y2="35" stroke="#94a3b8" stroke-width="2"/>
+                <line x1="120" y1="64" x2="155" y2="87" stroke="#94a3b8" stroke-width="1.5"/>
+                <text x="164" y="34" text-anchor="middle" font-size="11" fill="#ef4444" font-weight="700" font-family="monospace">CH₃</text>
+                <text x="164" y="92" text-anchor="middle" font-size="11" fill="#94a3b8" font-family="monospace">H</text>
+                <text x="134" y="28" font-size="9" fill="#ef4444">① high</text>
+                <!-- Z arrow showing same side -->
+                <path d="M 60 100 Q 100 112 140 100" stroke="#22c55e" stroke-width="1.5" fill="none" stroke-dasharray="4,3"/>
+                <text x="100" y="118" text-anchor="middle" font-size="10" fill="#22c55e" font-weight="700">both ① on SAME side → Z</text>
+              </svg>
+            </div>
+            <div class="keq-card" style="text-align:center;">
+              <div style="font-weight:700;color:#3b82f6;margin-bottom:8px;">(E)-but-2-ene</div>
+              <svg viewBox="0 0 200 120" width="200" height="120" xmlns="http://www.w3.org/2000/svg">
+                <line x1="80" y1="58" x2="120" y2="58" stroke="#3b82f6" stroke-width="2"/>
+                <line x1="80" y1="64" x2="120" y2="64" stroke="#3b82f6" stroke-width="2"/>
+                <text x="80" y="64" text-anchor="middle" font-size="13" font-weight="700" fill="#3b82f6" font-family="monospace">C</text>
+                <text x="120" y="64" text-anchor="middle" font-size="13" font-weight="700" fill="#3b82f6" font-family="monospace">C</text>
+                <!-- Left carbon: CH₃ up-left (high priority), H down-left (low priority) -->
+                <line x1="80" y1="58" x2="45" y2="35" stroke="#94a3b8" stroke-width="2"/>
+                <line x1="80" y1="64" x2="45" y2="87" stroke="#94a3b8" stroke-width="1.5"/>
+                <text x="36" y="34" text-anchor="middle" font-size="11" fill="#ef4444" font-weight="700" font-family="monospace">CH₃</text>
+                <text x="36" y="92" text-anchor="middle" font-size="11" fill="#94a3b8" font-family="monospace">H</text>
+                <text x="56" y="28" font-size="9" fill="#ef4444">① high</text>
+                <!-- Right carbon: H up-right (low priority), CH₃ down-right (high priority) -->
+                <line x1="120" y1="58" x2="155" y2="35" stroke="#94a3b8" stroke-width="1.5"/>
+                <line x1="120" y1="64" x2="155" y2="87" stroke="#94a3b8" stroke-width="2"/>
+                <text x="164" y="34" text-anchor="middle" font-size="11" fill="#94a3b8" font-family="monospace">H</text>
+                <text x="164" y="92" text-anchor="middle" font-size="11" fill="#ef4444" font-weight="700" font-family="monospace">CH₃</text>
+                <text x="134" y="28" font-size="9" fill="#94a3b8">② low</text>
+                <text x="134" y="100" font-size="9" fill="#ef4444">① high</text>
+                <!-- E arrows showing opposite sides -->
+                <line x1="56" y1="32" x2="144" y2="96" stroke="#3b82f6" stroke-width="1" stroke-dasharray="3,3"/>
+                <text x="100" y="118" text-anchor="middle" font-size="10" fill="#3b82f6" font-weight="700">both ① on OPPOSITE sides → E</text>
+              </svg>
+            </div>
+          </div>
+        </div>
+
+        <div class="keq-section">
+          <div class="keq-section-title">✅ Pros &amp; Cons of E-Z</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+            <div class="keq-card" style="border-color:#22c55e;">
+              <div style="color:#22c55e;font-weight:700;margin-bottom:6px;">✅ Advantages</div>
+              <div class="keq-desc" style="line-height:1.8;">
+                • Works for <strong>all</strong> alkenes — including those where cis/trans fails<br>
+                • Unambiguous when substituents are all different<br>
+                • Applies to C=N, C=C=C and other systems<br>
+                • IUPAC preferred — universal in modern literature<br>
+                • Handles isotope differences (H vs D)
+              </div>
+            </div>
+            <div class="keq-card" style="border-color:#ef4444;">
+              <div style="color:#ef4444;font-weight:700;margin-bottom:6px;">❌ Disadvantages</div>
+              <div class="keq-desc" style="line-height:1.8;">
+                • Requires learning CIP priority rules<br>
+                • Priority can be counter-intuitive (–CHO outranks –CH₂OH)<br>
+                • "Z" does not always correspond to "cis" visually<br>
+                • More complex to apply quickly in the field<br>
+                • Older literature uses cis/trans — must translate
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>`;
+    document.body.appendChild(m);
+    document.getElementById('closeEZ').addEventListener('click', () => m.style.display='none');
+    m.addEventListener('click', e => { if(e.target===m) m.style.display='none'; });
+  }
+  m.style.display = 'flex';
+}
+
+function showCisTransModal() {
+  let m = document.getElementById('cisTransModal');
+  if (!m) {
+    m = document.createElement('div');
+    m.id = 'cisTransModal';
+    m.className = 'panel-overlay';
+    m.innerHTML = `
+    <div class="panel-box" style="width:720px">
+      <div class="panel-header">
+        <h2>↔️ Cis/Trans Naming (Traditional)</h2>
+        <button class="panel-close" id="closeCisTrans">✕</button>
+      </div>
+      <div class="panel-body">
+        <div class="keq-section">
+          <div class="keq-section-title">📐 The Rule</div>
+          <div class="keq-card">
+            <div class="keq-desc" style="font-size:0.82rem;line-height:1.8;">
+              Used when <strong>each</strong> carbon of the C=C bond carries <strong>one identical group</strong>
+              (or at least one H on each carbon).
+              If the identical groups are on the <em>same</em> side → <strong>cis</strong> (Latin: on this side).
+              If they are on <em>opposite</em> sides → <strong>trans</strong> (Latin: across).
+              The reference group is usually the longest chain or the H atom.
+            </div>
+          </div>
+        </div>
+
+        <div class="keq-section">
+          <div class="keq-section-title">🎨 Visual Examples</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
+            <div class="keq-card" style="text-align:center;">
+              <div style="font-weight:700;color:#22c55e;margin-bottom:8px;">cis-but-2-ene</div>
+              <svg viewBox="0 0 200 110" width="200" height="110" xmlns="http://www.w3.org/2000/svg">
+                <line x1="80" y1="53" x2="120" y2="53" stroke="#22c55e" stroke-width="2"/>
+                <line x1="80" y1="59" x2="120" y2="59" stroke="#22c55e" stroke-width="2"/>
+                <text x="80" y="59" text-anchor="middle" font-size="13" font-weight="700" fill="#22c55e" font-family="monospace">C</text>
+                <text x="120" y="59" text-anchor="middle" font-size="13" font-weight="700" fill="#22c55e" font-family="monospace">C</text>
+                <line x1="80" y1="53" x2="48" y2="30" stroke="#94a3b8" stroke-width="2"/>
+                <line x1="80" y1="59" x2="48" y2="82" stroke="#94a3b8" stroke-width="1.5"/>
+                <text x="38" y="30" text-anchor="middle" font-size="11" fill="#22c55e" font-weight="700" font-family="monospace">CH₃</text>
+                <text x="38" y="87" text-anchor="middle" font-size="11" fill="#94a3b8" font-family="monospace">H</text>
+                <line x1="120" y1="53" x2="152" y2="30" stroke="#94a3b8" stroke-width="2"/>
+                <line x1="120" y1="59" x2="152" y2="82" stroke="#94a3b8" stroke-width="1.5"/>
+                <text x="162" y="30" text-anchor="middle" font-size="11" fill="#22c55e" font-weight="700" font-family="monospace">CH₃</text>
+                <text x="162" y="87" text-anchor="middle" font-size="11" fill="#94a3b8" font-family="monospace">H</text>
+                <text x="100" y="105" text-anchor="middle" font-size="10" fill="#22c55e" font-weight="700">CH₃ groups SAME side → cis</text>
+              </svg>
+            </div>
+            <div class="keq-card" style="text-align:center;">
+              <div style="font-weight:700;color:#3b82f6;margin-bottom:8px;">trans-but-2-ene</div>
+              <svg viewBox="0 0 200 110" width="200" height="110" xmlns="http://www.w3.org/2000/svg">
+                <line x1="80" y1="53" x2="120" y2="53" stroke="#3b82f6" stroke-width="2"/>
+                <line x1="80" y1="59" x2="120" y2="59" stroke="#3b82f6" stroke-width="2"/>
+                <text x="80" y="59" text-anchor="middle" font-size="13" font-weight="700" fill="#3b82f6" font-family="monospace">C</text>
+                <text x="120" y="59" text-anchor="middle" font-size="13" font-weight="700" fill="#3b82f6" font-family="monospace">C</text>
+                <line x1="80" y1="53" x2="48" y2="30" stroke="#94a3b8" stroke-width="2"/>
+                <line x1="80" y1="59" x2="48" y2="82" stroke="#94a3b8" stroke-width="1.5"/>
+                <text x="38" y="30" text-anchor="middle" font-size="11" fill="#3b82f6" font-weight="700" font-family="monospace">CH₃</text>
+                <text x="38" y="87" text-anchor="middle" font-size="11" fill="#94a3b8" font-family="monospace">H</text>
+                <line x1="120" y1="53" x2="152" y2="30" stroke="#94a3b8" stroke-width="1.5"/>
+                <line x1="120" y1="59" x2="152" y2="82" stroke="#94a3b8" stroke-width="2"/>
+                <text x="162" y="30" text-anchor="middle" font-size="11" fill="#94a3b8" font-family="monospace">H</text>
+                <text x="162" y="87" text-anchor="middle" font-size="11" fill="#3b82f6" font-weight="700" font-family="monospace">CH₃</text>
+                <text x="100" y="105" text-anchor="middle" font-size="10" fill="#3b82f6" font-weight="700">CH₃ groups OPPOSITE sides → trans</text>
+              </svg>
+            </div>
+          </div>
+        </div>
+
+        <div class="keq-section">
+          <div class="keq-section-title">⚠️ When Cis/Trans Fails</div>
+          <div class="keq-card" style="border-color:#eab308;">
+            <div class="keq-desc" style="line-height:1.8;">
+              Cis/trans is <strong>undefined</strong> when one carbon of the double bond has <strong>two identical substituents</strong>
+              (e.g. CH₂= on one end). It is also ambiguous when all four substituents are different
+              (which group do you call "cis" to which?).
+              For example: <span style="font-family:'Space Mono',monospace;color:#eab308;">CH₃CH=CClBr</span> —
+              there is no obvious "cis" or "trans" reference group.
+              This is exactly the situation that motivated the E-Z system.
+            </div>
+          </div>
+        </div>
+
+        <div class="keq-section">
+          <div class="keq-section-title">✅ Pros &amp; Cons of Cis/Trans</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+            <div class="keq-card" style="border-color:#22c55e;">
+              <div style="color:#22c55e;font-weight:700;margin-bottom:6px;">✅ Advantages</div>
+              <div class="keq-desc" style="line-height:1.8;">
+                • Instantly intuitive — "same side" vs "opposite side"<br>
+                • No priority rules required<br>
+                • Very fast to apply for simple symmetric alkenes<br>
+                • Universal in everyday language and older texts<br>
+                • Applies to cyclic systems (cis/trans ring substituents)
+              </div>
+            </div>
+            <div class="keq-card" style="border-color:#ef4444;">
+              <div style="color:#ef4444;font-weight:700;margin-bottom:6px;">❌ Disadvantages</div>
+              <div class="keq-desc" style="line-height:1.8;">
+                • Fails when all four substituents differ<br>
+                • Fails when one end has two identical groups (no isomerism)<br>
+                • Ambiguous: which group is the reference?<br>
+                • Not used in modern IUPAC nomenclature for alkenes<br>
+                • Cannot handle cumulated dienes, C=N, imines, etc.
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="keq-section">
+          <div class="keq-section-title">🔄 Correspondence Between Systems</div>
+          <table class="keq-table">
+            <thead><tr><th>Compound</th><th>Cis/Trans</th><th>E-Z</th><th>Note</th></tr></thead>
+            <tbody>
+              <tr><td style="font-family:'Space Mono',monospace">but-2-ene (CH₃ same side)</td>
+                  <td style="color:#22c55e;font-weight:700;">cis</td>
+                  <td style="color:#22c55e;font-weight:700;">Z</td>
+                  <td>Same here — CH₃ &gt; H, same side</td></tr>
+              <tr><td style="font-family:'Space Mono',monospace">but-2-ene (CH₃ opposite)</td>
+                  <td style="color:#3b82f6;font-weight:700;">trans</td>
+                  <td style="color:#3b82f6;font-weight:700;">E</td>
+                  <td>Same here — CH₃ opposite</td></tr>
+              <tr><td style="font-family:'Space Mono',monospace">1-bromo-2-chloroethene</td>
+                  <td style="color:#94a3b8;">cis (Br/Cl same side)</td>
+                  <td style="color:#22c55e;font-weight:700;">Z</td>
+                  <td>Br &gt; Cl, same side → Z</td></tr>
+              <tr><td style="font-family:'Space Mono',monospace">(Z)-1-bromo-1-fluoroethene</td>
+                  <td style="color:#ef4444;">undefined</td>
+                  <td style="color:#22c55e;font-weight:700;">Z</td>
+                  <td>Cis/trans fails; E-Z needed</td></tr>
+              <tr><td style="font-family:'Space Mono',monospace">cis-2-butene vs Z-2-butene</td>
+                  <td style="color:#22c55e;font-weight:700;">cis</td>
+                  <td style="color:#22c55e;font-weight:700;">Z</td>
+                  <td>Coincide for symmetric cases</td></tr>
+            </tbody>
+          </table>
+          <div style="font-size:0.7rem;color:var(--text-muted);margin-top:8px;font-style:italic;">
+            ⚠️ cis ≠ Z in all cases. For unsymmetric alkenes, always use E-Z.
+          </div>
+        </div>
+      </div>
+    </div>`;
+    document.body.appendChild(m);
+    document.getElementById('closeCisTrans').addEventListener('click', () => m.style.display='none');
+    m.addEventListener('click', e => { if(e.target===m) m.style.display='none'; });
+  }
+  m.style.display = 'flex';
+}
 
 function buildOrganicPanel() {
   const body = document.getElementById("organicBody");
   if (body.children.length > 0) return;
 
-  const cards = ORGANIC_GROUPS.map(g => `
-    <div class="org-card">
+  const cards = ORGANIC_GROUPS.map(g => {
+    const extraBtns = g.extraBtns ? `
+      <div style="display:flex;gap:6px;margin-top:6px;flex-wrap:wrap;">
+        <button class="org-extra-btn" id="btnEZ" style="border-color:#22c55e;color:#22c55e;">
+          🔀 E-Z Naming
+        </button>
+        <button class="org-extra-btn" id="btnCisTrans" style="border-color:#3b82f6;color:#3b82f6;">
+          ↔️ Cis/Trans Naming
+        </button>
+      </div>` : '';
+    return `<div class="org-card">
       <div class="org-card-header">
         <div class="org-class-name">${g.name}</div>
         <span class="org-badge" style="background:color-mix(in srgb,${g.badgeColor} 20%,var(--surface2));
           color:${g.badgeColor};border:1px solid ${g.badgeColor};">${g.badge}</span>
       </div>
-      <svg class="org-svg" viewBox="0 0 200 65" xmlns="http://www.w3.org/2000/svg">${g.svgContent}</svg>
-      <div class="org-formula">Formula: ${g.formula} &nbsp;|&nbsp; Suffix: ${g.suffix || 'varies'}</div>
+      <svg class="org-svg" viewBox="0 0 260 110" xmlns="http://www.w3.org/2000/svg">${g.svg}</svg>
+      <div class="org-formula">Formula: ${g.formula} &nbsp;|&nbsp; Suffix: ${g.suffix}</div>
       <div class="org-name-rules"><strong>Functional group:</strong> ${g.functional}</div>
       <div class="org-name-rules" style="margin-top:3px;"><strong>Naming:</strong> ${g.namingTip}</div>
       <div class="org-example">e.g. ${g.examples}</div>
       <div style="font-size:0.7rem;color:var(--text-muted);margin-top:4px;">${g.description}</div>
-    </div>`).join('');
+      ${extraBtns}
+    </div>`;
+  }).join('');
 
-  // Alkane homologous series table
   const alkanes = [
-    {n:1,name:"Methane",   f:"CH₄"},
-    {n:2,name:"Ethane",    f:"C₂H₆"},
-    {n:3,name:"Propane",   f:"C₃H₈"},
-    {n:4,name:"Butane",    f:"C₄H₁₀"},
-    {n:5,name:"Pentane",   f:"C₅H₁₂"},
-    {n:6,name:"Hexane",    f:"C₆H₁₄"},
-    {n:7,name:"Heptane",   f:"C₇H₁₆"},
-    {n:8,name:"Octane",    f:"C₈H₁₈"},
+    {n:1,name:"Methane",  f:"CH₄"},  {n:2,name:"Ethane",   f:"C₂H₆"},
+    {n:3,name:"Propane",  f:"C₃H₈"}, {n:4,name:"Butane",   f:"C₄H₁₀"},
+    {n:5,name:"Pentane",  f:"C₅H₁₂"},{n:6,name:"Hexane",   f:"C₆H₁₄"},
+    {n:7,name:"Heptane",  f:"C₇H₁₆"},{n:8,name:"Octane",   f:"C₈H₁₈"},
   ];
-
   const alkaneRows = alkanes.map(a =>
     `<tr><td>${a.n}</td><td>${a.name}</td><td style="font-family:'Space Mono',monospace">${a.f}</td></tr>`).join('');
-
-  const prefixes = [
-    ["1","meth-"],["2","eth-"],["3","prop-"],["4","but-"],
-    ["5","pent-"],["6","hex-"],["7","hept-"],["8","oct-"],["9","non-"],["10","dec-"]
-  ];
+  const prefixes = [["1","meth-"],["2","eth-"],["3","prop-"],["4","but-"],
+    ["5","pent-"],["6","hex-"],["7","hept-"],["8","oct-"],["9","non-"],["10","dec-"]];
   const prefixRows = prefixes.map(([n,p]) =>
     `<tr><td>${n}</td><td style="font-family:'Space Mono',monospace;color:var(--accent)">${p}</td></tr>`).join('');
 
   body.innerHTML = `
-    <div style="display:grid;grid-template-columns:1fr auto auto;gap:12px;align-items:start;">
+    <div style="display:grid;grid-template-columns:1fr 180px;gap:14px;align-items:start;">
       <div class="org-grid">${cards}</div>
-      <div style="min-width:160px;">
+      <div>
         <div class="org-homologous">
           <div class="org-homo-title">Carbon Prefixes</div>
           <table class="org-homo-table">
@@ -2882,6 +3262,12 @@ function buildOrganicPanel() {
         </div>
       </div>
     </div>`;
+
+  // Wire extra buttons (they exist now in DOM)
+  const btnEZ = document.getElementById('btnEZ');
+  const btnCT = document.getElementById('btnCisTrans');
+  if (btnEZ) btnEZ.addEventListener('click', showEZModal);
+  if (btnCT) btnCT.addEventListener('click', showCisTransModal);
 }
 
 document.getElementById("btnOrganic").addEventListener("click", () => {
@@ -2889,6 +3275,7 @@ document.getElementById("btnOrganic").addEventListener("click", () => {
   openPanel("organicOverlay");
 });
 document.getElementById("closeOrganic").addEventListener("click", () => closePanel("organicOverlay"));
+
 
 
 // ═══════════════════════════════════════════════════════════════════
