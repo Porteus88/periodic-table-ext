@@ -160,6 +160,13 @@ const TREND_DATA = {
     getValue: el => (!el.ir||el.ir==="—") ? null : parseFloat(el.ir),
     display: el => el.ir==="—" ? "" : el.ir,
   },
+  // Combined radii entry — routing handled in openTrend()
+  "radii": {
+    title:"Atomic Radius (pm)", unit:"pm",
+    note:"",
+    getValue: el => (!el.radius||el.radius==="—") ? null : parseFloat(el.radius),
+    display: el => el.radius==="—" ? "" : el.radius,
+  },
 };
 
 // ─── BUILD GRID ───────────────────────────────────────────────────
@@ -418,21 +425,39 @@ function openTrend(key) {
   document.getElementById("trendTitle").textContent = cfg.title;
   document.getElementById("trendNote").textContent = cfg.note;
 
-  // Show/hide IE toggle
   const isIE = key === "ionization";
-  document.getElementById("ieToggle").style.display = isIE ? "flex" : "none";
+  const isRadii = key === "radii";
 
-  // Always start on heatmap view
+  // Show/hide toggles
+  document.getElementById("ieToggle").style.display = isIE ? "flex" : "none";
+  document.getElementById("radiiTabs").style.display = isRadii ? "flex" : "none";
+
+  // Reset to heatmap view for all
   document.getElementById("trendHeatmapView").style.display = "";
   document.getElementById("trendGraphView").style.display = "none";
-  document.getElementById("btnViewHeatmap").classList.add("active");
-  document.getElementById("btnViewGraph").classList.remove("active");
+  document.getElementById("radiiCompareView").style.display = "none";
 
-  buildHeatmap(key);
+  if (isIE) {
+    document.getElementById("btnViewHeatmap").classList.add("active");
+    document.getElementById("btnViewGraph").classList.remove("active");
+  }
+  if (isRadii) {
+    document.getElementById("btnRadiiAtomic").classList.add("active");
+    document.getElementById("btnRadiiIonic").classList.remove("active");
+    document.getElementById("btnRadiiCompare").classList.remove("active");
+    // Default to atomic radius heatmap
+    buildHeatmap("atomic-radius");
+    document.getElementById("trendTitle").textContent = TREND_DATA["atomic-radius"].title;
+    document.getElementById("trendNote").textContent = TREND_DATA["atomic-radius"].note;
+  } else {
+    buildHeatmap(key);
+  }
+
   openPanel("trendOverlay");
 }
 
-// IE graph toggle buttons
+
+// ─── IE GRAPH TOGGLE ─────────────────────────────────────────────
 document.getElementById("btnViewHeatmap").addEventListener("click", () => {
   document.getElementById("trendHeatmapView").style.display = "";
   document.getElementById("trendGraphView").style.display = "none";
@@ -445,6 +470,38 @@ document.getElementById("btnViewGraph").addEventListener("click", () => {
   document.getElementById("btnViewHeatmap").classList.remove("active");
   document.getElementById("btnViewGraph").classList.add("active");
   buildIEGraph();
+});
+
+// ─── RADII TAB LISTENERS ─────────────────────────────────────────
+document.getElementById("btnRadiiAtomic").addEventListener("click", () => {
+  document.getElementById("trendHeatmapView").style.display = "";
+  document.getElementById("radiiCompareView").style.display = "none";
+  document.getElementById("btnRadiiAtomic").classList.add("active");
+  document.getElementById("btnRadiiIonic").classList.remove("active");
+  document.getElementById("btnRadiiCompare").classList.remove("active");
+  buildHeatmap("atomic-radius");
+  document.getElementById("trendTitle").textContent = TREND_DATA["atomic-radius"].title;
+  document.getElementById("trendNote").textContent = TREND_DATA["atomic-radius"].note;
+});
+document.getElementById("btnRadiiIonic").addEventListener("click", () => {
+  document.getElementById("trendHeatmapView").style.display = "";
+  document.getElementById("radiiCompareView").style.display = "none";
+  document.getElementById("btnRadiiAtomic").classList.remove("active");
+  document.getElementById("btnRadiiIonic").classList.add("active");
+  document.getElementById("btnRadiiCompare").classList.remove("active");
+  buildHeatmap("ionic-radius");
+  document.getElementById("trendTitle").textContent = TREND_DATA["ionic-radius"].title;
+  document.getElementById("trendNote").textContent = TREND_DATA["ionic-radius"].note;
+});
+document.getElementById("btnRadiiCompare").addEventListener("click", () => {
+  document.getElementById("trendHeatmapView").style.display = "none";
+  document.getElementById("radiiCompareView").style.display = "";
+  document.getElementById("btnRadiiAtomic").classList.remove("active");
+  document.getElementById("btnRadiiIonic").classList.remove("active");
+  document.getElementById("btnRadiiCompare").classList.add("active");
+  document.getElementById("trendTitle").textContent = "Atomic vs Ionic Radii (pm)";
+  document.getElementById("trendNote").textContent = "";
+  buildRadiiCompare();
 });
 
 // ─── COMMON IONS CHART ────────────────────────────────────────────
@@ -867,6 +924,189 @@ function buildRedoxChart() {
   `;
 }
 
+// ─── RADII COMPARISON VIEW ───────────────────────────────────────
+function buildRadiiCompare() {
+  // Shannon (1976) ionic radii for most common oxidation state (6-coord where applicable)
+  // Atomic radii from element data; ionic radii matched to image data
+  // Data verified against: Shannon, R.D. (1976) Acta Crystallographica Section A, 32(5), 751–767.
+  // DOI: 10.1107/S0567739476001551
+  //
+  // ionCharge: ion label shown on figure, ionR: ionic radius in pm
+  // Elements without well-defined ionic radii in the s/p/d blocks shown in image are omitted
+  const ionicData = {
+    // Period 2
+    3:  {ion:"Li⁺",  ionR:76},
+    4:  {ion:"Be²⁺", ionR:45},
+    // B, C skip (covalent, no ionic in table)
+    7:  {ion:"N³⁻",  ionR:146},
+    8:  {ion:"O²⁻",  ionR:140},
+    9:  {ion:"F⁻",   ionR:133},
+    // Period 3
+    11: {ion:"Na⁺",  ionR:102},
+    12: {ion:"Mg²⁺", ionR:72},
+    13: {ion:"Al³⁺", ionR:53.5},
+    14: {ion:"Si⁴⁺", ionR:40},
+    15: {ion:"P³⁻",  ionR:212},
+    16: {ion:"S²⁻",  ionR:184},
+    17: {ion:"Cl⁻",  ionR:181},
+    // Period 4
+    19: {ion:"K⁺",   ionR:138},
+    20: {ion:"Ca²⁺", ionR:100},
+    21: {ion:"Sc³⁺", ionR:74.5},
+    22: {ion:"Ti³⁺", ionR:67},
+    23: {ion:"V²⁺",  ionR:79},
+    24: {ion:"Cr²⁺", ionR:80},
+    25: {ion:"Mn²⁺", ionR:83},
+    26: {ion:"Fe²⁺", ionR:78},
+    27: {ion:"Co²⁺", ionR:74.5},
+    28: {ion:"Ni²⁺", ionR:69},
+    29: {ion:"Cu²⁺", ionR:73},
+    30: {ion:"Zn²⁺", ionR:74},
+    31: {ion:"Ga³⁺", ionR:62},
+    32: {ion:"Ge⁴⁺", ionR:53},
+    33: {ion:"As³⁺", ionR:58},
+    34: {ion:"Se²⁻", ionR:198},
+    35: {ion:"Br⁻",  ionR:196},
+    // Period 5
+    37: {ion:"Rb⁺",  ionR:152},
+    38: {ion:"Sr²⁺", ionR:118},
+    39: {ion:"Y³⁺",  ionR:90},
+    40: {ion:"Zr⁴⁺", ionR:72},
+    41: {ion:"Nb³⁺", ionR:72},
+    42: {ion:"Mo⁴⁺", ionR:65},
+    43: {ion:"Tc⁴⁺", ionR:64.5},
+    44: {ion:"Ru³⁺", ionR:68},
+    45: {ion:"Rh³⁺", ionR:66.5},
+    46: {ion:"Pd²⁺", ionR:86},
+    47: {ion:"Ag⁺",  ionR:115},
+    48: {ion:"Cd²⁺", ionR:95},
+    49: {ion:"In³⁺", ionR:80},
+    50: {ion:"Sn⁴⁺", ionR:69},
+    51: {ion:"Sb³⁺", ionR:76},
+    52: {ion:"Te²⁻", ionR:221},
+    53: {ion:"I⁻",   ionR:220},
+    // Period 6
+    55: {ion:"Cs⁺",  ionR:167},
+    56: {ion:"Ba²⁺", ionR:135},
+    57: {ion:"La³⁺", ionR:103},
+    72: {ion:"Hf⁴⁺", ionR:71},
+    73: {ion:"Ta⁵⁺", ionR:72},
+    74: {ion:"W⁴⁺",  ionR:66},
+    75: {ion:"Re⁴⁺", ionR:63},
+    76: {ion:"Os⁴⁺", ionR:63},
+    77: {ion:"Ir³⁺", ionR:68},
+    78: {ion:"Pt²⁺", ionR:80},
+    79: {ion:"Au⁺",  ionR:137},
+    80: {ion:"Hg²⁺", ionR:102},
+    81: {ion:"Tl³⁺", ionR:88.5},
+    82: {ion:"Pb⁴⁺", ionR:77.5},
+    83: {ion:"Bi³⁺", ionR:103},
+  };
+
+  // Category colors matching main table
+  const CAT_COLORS_HEX = {
+    "alkali":"#ef4444","alkali-earth":"#f97316","transition":"#3b82f6",
+    "post-trans":"#8b5cf6","metalloid":"#14b8a6","nonmetal":"#22c55e",
+    "halogen":"#eab308","noble-gas":"#ec4899","lanthanide":"#06b6d4","actinide":"#f59e0b"
+  };
+
+  // Get all valid atomic radii to scale circles
+  const allAtomic = ELEMENTS.map(e => e.radius && e.radius!=="—" ? parseFloat(e.radius) : null).filter(Boolean);
+  const allIonic = Object.values(ionicData).map(d => d.ionR);
+  const maxR = Math.max(...allAtomic, ...allIonic);
+  // Max pixel diameter for largest circle (fits in cell min-height 52px)
+  const maxPx = 46;
+  const scale = r => Math.max(6, (r / maxR) * maxPx);
+
+  const posMap = {};
+  ELEMENTS.forEach(el => { posMap[`${el.row},${el.col}`] = el; });
+
+  let cells = "";
+  for (let r = 1; r <= 9; r++) {
+    if (r === 8) {
+      cells += `<div style="grid-column:1/-1;height:5px;"></div>`;
+      continue;
+    }
+    for (let c = 1; c <= 18; c++) {
+      const el = posMap[`${r},${c}`];
+      if (!el) { cells += `<div class="radii-cell"></div>`; continue; }
+
+      const atomR = el.radius && el.radius !== "—" ? parseFloat(el.radius) : null;
+      const iData = ionicData[el.z];
+      const catColor = CAT_COLORS_HEX[el.cat] || "#94a3b8";
+
+      const atomDiam = atomR ? scale(atomR) : 0;
+      const ionDiam  = iData  ? scale(iData.ionR)  : 0;
+
+      // Circles: atom behind (coloured, transparent), ion in front (grey)
+      const atomCircle = atomR ? `<div class="radii-atom-circle" style="
+        width:${atomDiam}px;height:${atomDiam}px;
+        background:${catColor};
+        bottom:0;"></div>` : "";
+
+      const ionCircle = iData ? `<div class="radii-ion-circle" style="
+        width:${ionDiam}px;height:${ionDiam}px;
+        bottom:0;"></div>` : "";
+
+      const atomLabel = atomR ? `<span class="radii-val">${Math.round(atomR)}</span>` : "";
+      const ionLabel  = iData  ? `<span class="radii-val radii-ion-val">${iData.ionR}</span>` : "";
+      const ionCharge = iData ? `<span style="font-family:'Space Mono',monospace;font-size:0.36rem;
+        color:rgba(148,213,255,0.8);line-height:1;">${iData.ion}</span>` : "";
+
+      const circleHeight = Math.max(atomDiam, ionDiam, 10);
+
+      cells += `<div class="radii-cell" title="${el.name}: atom ${atomR||'?'}pm${iData?', ion '+iData.ionR+'pm':''}">
+        <div class="radii-cell-inner">
+          ${ionCharge}
+          <div class="radii-circles" style="height:${circleHeight}px;">
+            ${atomCircle}
+            ${ionCircle}
+          </div>
+          <span class="radii-sym">${el.sym}</span>
+          <div style="display:flex;gap:2px;flex-wrap:wrap;justify-content:center;">
+            ${atomLabel}
+            ${iData && atomR ? `<span class="radii-val" style="color:rgba(100,116,139,0.5)">|</span>` : ""}
+            ${ionLabel}
+          </div>
+        </div>
+      </div>`;
+    }
+  }
+
+  // Series labels
+  const seriesLabel = (text, col, row) =>
+    `<div style="grid-row:${row};grid-column:${col};display:flex;align-items:center;
+      justify-content:flex-end;padding-right:4px;font-size:0.5rem;font-weight:700;
+      text-transform:uppercase;color:var(--text-muted);">${text}</div>`;
+
+  document.getElementById("radiiCompareContent").innerHTML = `
+    <div class="radii-legend">
+      <div class="radii-legend-item">
+        <div class="radii-legend-atom" style="background:#3b82f6;width:14px;height:14px;border-radius:50%;opacity:0.7;"></div>
+        <span>Coloured circle = atomic radius (colour matches element category)</span>
+      </div>
+      <div class="radii-legend-item">
+        <div class="radii-legend-ion"></div>
+        <span>Grey circle = ionic radius (most common oxidation state, 6-coord.)</span>
+      </div>
+      <div class="radii-legend-item" style="margin-left:14px;font-size:0.7rem;">
+        <span style="color:var(--text)">Values in pm &nbsp;|&nbsp; </span>
+        <span style="color:var(--text)">Atom radius / </span>
+        <span style="color:rgba(148,213,255,0.8)">Ion radius</span>
+      </div>
+    </div>
+    <div class="radii-grid" style="overflow-x:auto;">${cells}</div>
+    <div class="radii-source">
+      Ionic radius data: Shannon, R.D. (1976). Revised effective ionic radii and systematic studies
+      of interatomic distances in halides and chalcogenides.
+      <em>Acta Crystallographica Section A</em>, <strong>32</strong>(5), 751–767.
+      DOI: <a href="https://doi.org/10.1107/S0567739476001551" target="_blank"
+        style="color:var(--accent)">10.1107/S0567739476001551</a>.
+      Atomic radii: calculated values from Slater (1964) as compiled in the element dataset.
+    </div>
+  `;
+}
+
 // ─── Ksp TABLE ────────────────────────────────────────────────────
 function buildKspChart() {
   const compounds = [
@@ -1033,8 +1273,7 @@ document.getElementById("btnRedox").addEventListener("click", () => openPanel("r
 // Trend buttons
 document.getElementById("btnTrendEneg").addEventListener("click", () => openTrend("electronegativity"));
 document.getElementById("btnTrendIE").addEventListener("click", () => openTrend("ionization"));
-document.getElementById("btnTrendAR").addEventListener("click", () => openTrend("atomic-radius"));
-document.getElementById("btnTrendIR").addEventListener("click", () => openTrend("ionic-radius"));
+document.getElementById("btnTrendRadii").addEventListener("click", () => openTrend("radii"));
 
 // Panel close buttons
 document.getElementById("closeTrend").addEventListener("click", () => closePanel("trendOverlay"));
@@ -1045,3 +1284,315 @@ document.getElementById("closeKa").addEventListener("click", () => closePanel("k
 document.getElementById("closeRedox").addEventListener("click", () => closePanel("redoxOverlay"));
 document.getElementById("closeKsp").addEventListener("click", () => closePanel("kspOverlay"));
 document.getElementById("closeIndicators").addEventListener("click", () => closePanel("indicatorsOverlay"));
+
+// ─── ISOTOPE DATA ─────────────────────────────────────────────────
+// Common naturally-occurring isotopes with atomic mass and natural abundance (%)
+// Synthetic-only elements listed with their most stable isotope, abundance: null
+// Sources: IUPAC 2021 atomic weights; NUBASE2020; NNDC
+const ISOTOPE_DATA = {
+  1:  {isotopes:[{name:"H-1 (Protium)",  mass:"1.00782503",  pct:99.9885},{name:"H-2 (Deuterium)",mass:"2.01410178",pct:0.0115},{name:"H-3 (Tritium)",mass:"3.01604927",pct:null,note:"trace/radioactive"}]},
+  2:  {isotopes:[{name:"He-3",mass:"3.01602932",pct:0.000134},{name:"He-4",mass:"4.00260325",pct:99.999866}]},
+  3:  {isotopes:[{name:"Li-6",mass:"6.01512289",pct:7.59},{name:"Li-7",mass:"7.01600344",pct:92.41}]},
+  4:  {isotopes:[{name:"Be-9",mass:"9.01218307",pct:100}]},
+  5:  {isotopes:[{name:"B-10",mass:"10.01293695",pct:19.9},{name:"B-11",mass:"11.00930536",pct:80.1}]},
+  6:  {isotopes:[{name:"C-12",mass:"12.00000000",pct:98.93},{name:"C-13",mass:"13.00335484",pct:1.07},{name:"C-14",mass:"14.00324199",pct:null,note:"trace/radioactive"}]},
+  7:  {isotopes:[{name:"N-14",mass:"14.00307401",pct:99.636},{name:"N-15",mass:"15.00010890",pct:0.364}]},
+  8:  {isotopes:[{name:"O-16",mass:"15.99491462",pct:99.757},{name:"O-17",mass:"16.99913170",pct:0.038},{name:"O-18",mass:"17.99915961",pct:0.205}]},
+  9:  {isotopes:[{name:"F-19",mass:"18.99840322",pct:100}]},
+  10: {isotopes:[{name:"Ne-20",mass:"19.99244018",pct:90.48},{name:"Ne-21",mass:"20.99338853",pct:0.27},{name:"Ne-22",mass:"21.99138511",pct:9.25}]},
+  11: {isotopes:[{name:"Na-23",mass:"22.98976928",pct:100}]},
+  12: {isotopes:[{name:"Mg-24",mass:"23.98504170",pct:78.99},{name:"Mg-25",mass:"24.98583698",pct:10.00},{name:"Mg-26",mass:"25.98259297",pct:11.01}]},
+  13: {isotopes:[{name:"Al-27",mass:"26.98153853",pct:100}]},
+  14: {isotopes:[{name:"Si-28",mass:"27.97692653",pct:92.223},{name:"Si-29",mass:"28.97649467",pct:4.685},{name:"Si-30",mass:"29.97377015",pct:3.092}]},
+  15: {isotopes:[{name:"P-31",mass:"30.97376163",pct:100}]},
+  16: {isotopes:[{name:"S-32",mass:"31.97207101",pct:94.99},{name:"S-33",mass:"32.97145891",pct:0.75},{name:"S-34",mass:"33.96786701",pct:4.25},{name:"S-36",mass:"35.96708071",pct:0.01}]},
+  17: {isotopes:[{name:"Cl-35",mass:"34.96885268",pct:75.76},{name:"Cl-37",mass:"36.96590260",pct:24.24}]},
+  18: {isotopes:[{name:"Ar-36",mass:"35.96754510",pct:0.3336},{name:"Ar-38",mass:"37.96273211",pct:0.0629},{name:"Ar-40",mass:"39.96238312",pct:99.6035}]},
+  19: {isotopes:[{name:"K-39",mass:"38.96370668",pct:93.2581},{name:"K-40",mass:"39.96399848",pct:0.0117,note:"radioactive"},{name:"K-41",mass:"40.96182526",pct:6.7302}]},
+  20: {isotopes:[{name:"Ca-40",mass:"39.96259098",pct:96.941},{name:"Ca-42",mass:"41.95861783",pct:0.647},{name:"Ca-43",mass:"42.95876644",pct:0.135},{name:"Ca-44",mass:"43.95548156",pct:2.086},{name:"Ca-46",mass:"45.95368977",pct:0.004},{name:"Ca-48",mass:"47.95252277",pct:0.187}]},
+  21: {isotopes:[{name:"Sc-45",mass:"44.95590828",pct:100}]},
+  22: {isotopes:[{name:"Ti-46",mass:"45.95262772",pct:8.25},{name:"Ti-47",mass:"46.95175879",pct:7.44},{name:"Ti-48",mass:"47.94794198",pct:73.72},{name:"Ti-49",mass:"48.94786568",pct:5.41},{name:"Ti-50",mass:"49.94478689",pct:5.18}]},
+  23: {isotopes:[{name:"V-50",mass:"49.94715601",pct:0.250},{name:"V-51",mass:"50.94395704",pct:99.750}]},
+  24: {isotopes:[{name:"Cr-50",mass:"49.94604183",pct:4.345},{name:"Cr-52",mass:"51.94050623",pct:83.789},{name:"Cr-53",mass:"52.94064815",pct:9.501},{name:"Cr-54",mass:"53.93887916",pct:2.365}]},
+  25: {isotopes:[{name:"Mn-55",mass:"54.93804391",pct:100}]},
+  26: {isotopes:[{name:"Fe-54",mass:"53.93960899",pct:5.845},{name:"Fe-56",mass:"55.93493633",pct:91.754},{name:"Fe-57",mass:"56.93539284",pct:2.119},{name:"Fe-58",mass:"57.93327443",pct:0.282}]},
+  27: {isotopes:[{name:"Co-59",mass:"58.93319429",pct:100}]},
+  28: {isotopes:[{name:"Ni-58",mass:"57.93534241",pct:68.077},{name:"Ni-60",mass:"59.93078588",pct:26.223},{name:"Ni-61",mass:"60.93105557",pct:1.140},{name:"Ni-62",mass:"61.92834537",pct:3.634},{name:"Ni-64",mass:"63.92796682",pct:0.926}]},
+  29: {isotopes:[{name:"Cu-63",mass:"62.92959772",pct:69.15},{name:"Cu-65",mass:"64.92778970",pct:30.85}]},
+  30: {isotopes:[{name:"Zn-64",mass:"63.92914201",pct:48.6},{name:"Zn-66",mass:"65.92603381",pct:27.9},{name:"Zn-67",mass:"66.92712775",pct:4.1},{name:"Zn-68",mass:"67.92484455",pct:18.8},{name:"Zn-70",mass:"69.92531974",pct:0.6}]},
+  31: {isotopes:[{name:"Ga-69",mass:"68.92557350",pct:60.108},{name:"Ga-71",mass:"70.92470258",pct:39.892}]},
+  32: {isotopes:[{name:"Ge-70",mass:"69.92424876",pct:20.57},{name:"Ge-72",mass:"71.92207583",pct:27.45},{name:"Ge-73",mass:"72.92345896",pct:7.75},{name:"Ge-74",mass:"73.92117776",pct:36.50},{name:"Ge-76",mass:"75.92140273",pct:7.73}]},
+  33: {isotopes:[{name:"As-75",mass:"74.92159457",pct:100}]},
+  34: {isotopes:[{name:"Se-74",mass:"73.92247593",pct:0.89},{name:"Se-76",mass:"75.91921370",pct:9.37},{name:"Se-77",mass:"76.91991415",pct:7.63},{name:"Se-78",mass:"77.91730928",pct:23.77},{name:"Se-80",mass:"79.91652177",pct:49.61},{name:"Se-82",mass:"81.91669940",pct:8.73}]},
+  35: {isotopes:[{name:"Br-79",mass:"78.91833710",pct:50.69},{name:"Br-81",mass:"80.91628960",pct:49.31}]},
+  36: {isotopes:[{name:"Kr-78",mass:"77.92036494",pct:0.355},{name:"Kr-80",mass:"79.91637808",pct:2.286},{name:"Kr-82",mass:"81.91348273",pct:11.593},{name:"Kr-83",mass:"82.91412716",pct:11.500},{name:"Kr-84",mass:"83.91149773",pct:56.987},{name:"Kr-86",mass:"85.91061063",pct:17.279}]},
+  37: {isotopes:[{name:"Rb-85",mass:"84.91178974",pct:72.17},{name:"Rb-87",mass:"86.90918053",pct:27.83,note:"radioactive (t½=49 Gy)"}]},
+  38: {isotopes:[{name:"Sr-84",mass:"83.91342196",pct:0.56},{name:"Sr-86",mass:"85.90926073",pct:9.86},{name:"Sr-87",mass:"86.90887750",pct:7.00},{name:"Sr-88",mass:"87.90561226",pct:82.58}]},
+  39: {isotopes:[{name:"Y-89",mass:"88.90584403",pct:100}]},
+  40: {isotopes:[{name:"Zr-90",mass:"89.90470447",pct:51.45},{name:"Zr-91",mass:"90.90564648",pct:11.22},{name:"Zr-92",mass:"91.90503536",pct:17.15},{name:"Zr-94",mass:"93.90631609",pct:17.38},{name:"Zr-96",mass:"95.90827762",pct:2.80}]},
+  41: {isotopes:[{name:"Nb-93",mass:"92.90637809",pct:100}]},
+  42: {isotopes:[{name:"Mo-92",mass:"91.90680796",pct:14.53},{name:"Mo-94",mass:"93.90508490",pct:9.15},{name:"Mo-95",mass:"94.90583877",pct:15.84},{name:"Mo-96",mass:"95.90467612",pct:16.67},{name:"Mo-97",mass:"96.90601812",pct:9.60},{name:"Mo-98",mass:"97.90540482",pct:24.39},{name:"Mo-100",mass:"99.90747177",pct:9.82}]},
+  43: {synthetic:true, isotopes:[{name:"Tc-98 (most stable)",mass:"97.9072124",pct:null}]},
+  44: {isotopes:[{name:"Ru-96",mass:"95.90759025",pct:5.54},{name:"Ru-98",mass:"97.90528987",pct:1.87},{name:"Ru-99",mass:"98.90593393",pct:12.76},{name:"Ru-100",mass:"99.90421445",pct:12.60},{name:"Ru-101",mass:"100.90557645",pct:17.06},{name:"Ru-102",mass:"101.90434930",pct:31.55},{name:"Ru-104",mass:"103.90543490",pct:18.62}]},
+  45: {isotopes:[{name:"Rh-103",mass:"102.90549800",pct:100}]},
+  46: {isotopes:[{name:"Pd-102",mass:"101.90563440",pct:1.02},{name:"Pd-104",mass:"103.90403054",pct:11.14},{name:"Pd-105",mass:"104.90507849",pct:22.33},{name:"Pd-106",mass:"105.90348340",pct:27.33},{name:"Pd-108",mass:"107.90389164",pct:26.46},{name:"Pd-110",mass:"109.90517220",pct:11.72}]},
+  47: {isotopes:[{name:"Ag-107",mass:"106.90509682",pct:51.839},{name:"Ag-109",mass:"108.90475641",pct:48.161}]},
+  48: {isotopes:[{name:"Cd-106",mass:"105.90645938",pct:1.25},{name:"Cd-108",mass:"107.90418346",pct:0.89},{name:"Cd-110",mass:"109.90300661",pct:12.47},{name:"Cd-111",mass:"110.90418287",pct:12.80},{name:"Cd-112",mass:"111.90276287",pct:24.11},{name:"Cd-113",mass:"112.90440813",pct:12.22},{name:"Cd-114",mass:"113.90336509",pct:28.73},{name:"Cd-116",mass:"115.90476315",pct:7.53}]},
+  49: {isotopes:[{name:"In-113",mass:"112.90406184",pct:4.29},{name:"In-115",mass:"114.90387877",pct:95.71,note:"radioactive (t½=441 Ty)"}]},
+  50: {isotopes:[{name:"Sn-112",mass:"111.90482387",pct:0.97},{name:"Sn-114",mass:"113.90278006",pct:0.66},{name:"Sn-115",mass:"114.90334469",pct:0.34},{name:"Sn-116",mass:"115.90174280",pct:14.54},{name:"Sn-117",mass:"116.90295398",pct:7.68},{name:"Sn-118",mass:"117.90160660",pct:24.22},{name:"Sn-119",mass:"118.90331117",pct:8.59},{name:"Sn-120",mass:"119.90220163",pct:32.58},{name:"Sn-122",mass:"121.90344357",pct:4.63},{name:"Sn-124",mass:"123.90527660",pct:5.79}]},
+  51: {isotopes:[{name:"Sb-121",mass:"120.90381570",pct:57.21},{name:"Sb-123",mass:"122.90421570",pct:42.79}]},
+  52: {isotopes:[{name:"Te-120",mass:"119.90405938",pct:0.09},{name:"Te-122",mass:"121.90304343",pct:2.55},{name:"Te-123",mass:"122.90426965",pct:0.89},{name:"Te-124",mass:"123.90281865",pct:4.74},{name:"Te-125",mass:"124.90442499",pct:7.07},{name:"Te-126",mass:"125.90331108",pct:18.84},{name:"Te-128",mass:"127.90446128",pct:31.74},{name:"Te-130",mass:"129.90622275",pct:34.08}]},
+  53: {isotopes:[{name:"I-127",mass:"126.90447879",pct:100}]},
+  54: {isotopes:[{name:"Xe-124",mass:"123.90589190",pct:0.0952},{name:"Xe-126",mass:"125.90430300",pct:0.0890},{name:"Xe-128",mass:"127.90353100",pct:1.9102},{name:"Xe-129",mass:"128.90478086",pct:26.4006},{name:"Xe-130",mass:"129.90350935",pct:4.0710},{name:"Xe-131",mass:"130.90508406",pct:21.2324},{name:"Xe-132",mass:"131.90415509",pct:26.9086},{name:"Xe-134",mass:"133.90539466",pct:10.4357},{name:"Xe-136",mass:"135.90721448",pct:8.8573}]},
+  55: {isotopes:[{name:"Cs-133",mass:"132.90545196",pct:100}]},
+  56: {isotopes:[{name:"Ba-130",mass:"129.90632073",pct:0.106},{name:"Ba-132",mass:"131.90506121",pct:0.101},{name:"Ba-134",mass:"133.90449780",pct:2.417},{name:"Ba-135",mass:"134.90568838",pct:6.592},{name:"Ba-136",mass:"135.90457573",pct:7.854},{name:"Ba-137",mass:"136.90582714",pct:11.232},{name:"Ba-138",mass:"137.90524700",pct:71.698}]},
+  57: {isotopes:[{name:"La-138",mass:"137.90712016",pct:0.0888,note:"radioactive (t½=1.05×10¹¹ y)"},{name:"La-139",mass:"138.90635473",pct:99.9112}]},
+  58: {isotopes:[{name:"Ce-136",mass:"135.90712921",pct:0.185},{name:"Ce-138",mass:"137.90599089",pct:0.251},{name:"Ce-140",mass:"139.90544113",pct:88.450},{name:"Ce-142",mass:"141.90924780",pct:11.114}]},
+  59: {isotopes:[{name:"Pr-141",mass:"140.90765760",pct:100}]},
+  60: {isotopes:[{name:"Nd-142",mass:"141.90773190",pct:27.152},{name:"Nd-143",mass:"142.90982070",pct:12.174},{name:"Nd-144",mass:"143.91008700",pct:23.798},{name:"Nd-145",mass:"144.91257560",pct:8.293},{name:"Nd-146",mass:"145.91312250",pct:17.189},{name:"Nd-148",mass:"147.91689980",pct:5.756},{name:"Nd-150",mass:"149.92090220",pct:5.638}]},
+  61: {synthetic:true, isotopes:[{name:"Pm-145 (most stable)",mass:"144.9127559",pct:null}]},
+  62: {isotopes:[{name:"Sm-144",mass:"143.91200700",pct:3.08},{name:"Sm-147",mass:"146.91489790",pct:14.99},{name:"Sm-148",mass:"147.91482780",pct:11.24},{name:"Sm-149",mass:"148.91718920",pct:13.82},{name:"Sm-150",mass:"149.91727510",pct:7.38},{name:"Sm-152",mass:"151.91973790",pct:26.75},{name:"Sm-154",mass:"153.92221730",pct:22.74}]},
+  63: {isotopes:[{name:"Eu-151",mass:"150.91985693",pct:47.81},{name:"Eu-153",mass:"152.92123717",pct:52.19}]},
+  64: {isotopes:[{name:"Gd-152",mass:"151.91979780",pct:0.20},{name:"Gd-154",mass:"153.92086930",pct:2.18},{name:"Gd-155",mass:"154.92262070",pct:14.80},{name:"Gd-156",mass:"155.92212780",pct:20.47},{name:"Gd-157",mass:"156.92396740",pct:15.65},{name:"Gd-158",mass:"157.92410530",pct:24.84},{name:"Gd-160",mass:"159.92705710",pct:21.86}]},
+  65: {isotopes:[{name:"Tb-159",mass:"158.92534750",pct:100}]},
+  66: {isotopes:[{name:"Dy-156",mass:"155.92428350",pct:0.056},{name:"Dy-158",mass:"157.92441280",pct:0.095},{name:"Dy-160",mass:"159.92519750",pct:2.329},{name:"Dy-161",mass:"160.92693450",pct:18.889},{name:"Dy-162",mass:"161.92680460",pct:25.475},{name:"Dy-163",mass:"162.92873750",pct:24.896},{name:"Dy-164",mass:"163.92917920",pct:28.260}]},
+  67: {isotopes:[{name:"Ho-165",mass:"164.93032880",pct:100}]},
+  68: {isotopes:[{name:"Er-162",mass:"161.92879050",pct:0.139},{name:"Er-164",mass:"163.92920780",pct:1.601},{name:"Er-166",mass:"165.93029880",pct:33.503},{name:"Er-167",mass:"166.93204880",pct:22.869},{name:"Er-168",mass:"167.93237620",pct:26.978},{name:"Er-170",mass:"169.93547090",pct:14.910}]},
+  69: {isotopes:[{name:"Tm-169",mass:"168.93421860",pct:100}]},
+  70: {isotopes:[{name:"Yb-168",mass:"167.93389100",pct:0.126},{name:"Yb-170",mass:"169.93476790",pct:3.023},{name:"Yb-171",mass:"170.93633310",pct:14.216},{name:"Yb-172",mass:"171.93638660",pct:21.754},{name:"Yb-173",mass:"172.93821490",pct:16.098},{name:"Yb-174",mass:"173.93886840",pct:31.896},{name:"Yb-176",mass:"175.94257600",pct:12.887}]},
+  71: {isotopes:[{name:"Lu-175",mass:"174.94077840",pct:97.401},{name:"Lu-176",mass:"175.94268630",pct:2.599,note:"radioactive (t½=37.6 Gy)"}]},
+  72: {isotopes:[{name:"Hf-174",mass:"173.94004610",pct:0.16},{name:"Hf-176",mass:"175.94140760",pct:5.26},{name:"Hf-177",mass:"176.94322820",pct:18.60},{name:"Hf-178",mass:"177.94370660",pct:27.28},{name:"Hf-179",mass:"178.94581890",pct:13.62},{name:"Hf-180",mass:"179.94655610",pct:35.08}]},
+  73: {isotopes:[{name:"Ta-180m",mass:"179.94746610",pct:0.01201,note:"isomer, radioactive"},{name:"Ta-181",mass:"180.94799580",pct:99.98799}]},
+  74: {isotopes:[{name:"W-180",mass:"179.94670800",pct:0.12},{name:"W-182",mass:"181.94820394",pct:26.50},{name:"W-183",mass:"182.95022750",pct:14.31},{name:"W-184",mass:"183.95093093",pct:30.64},{name:"W-186",mass:"185.95436442",pct:28.43}]},
+  75: {isotopes:[{name:"Re-185",mass:"184.95295790",pct:37.40},{name:"Re-187",mass:"186.95575160",pct:62.60,note:"radioactive (t½=41.2 Gy)"}]},
+  76: {isotopes:[{name:"Os-184",mass:"183.95248486",pct:0.02},{name:"Os-186",mass:"185.95383820",pct:1.59},{name:"Os-187",mass:"186.95574820",pct:1.96},{name:"Os-188",mass:"187.95583520",pct:13.24},{name:"Os-189",mass:"188.95814770",pct:16.15},{name:"Os-190",mass:"189.95844620",pct:26.26},{name:"Os-192",mass:"191.96147930",pct:40.78}]},
+  77: {isotopes:[{name:"Ir-191",mass:"190.96059320",pct:37.3},{name:"Ir-193",mass:"192.96292640",pct:62.7}]},
+  78: {isotopes:[{name:"Pt-190",mass:"189.95993490",pct:0.012},{name:"Pt-192",mass:"191.96103490",pct:0.782},{name:"Pt-194",mass:"193.96268200",pct:32.864},{name:"Pt-195",mass:"194.96479230",pct:33.775},{name:"Pt-196",mass:"195.96495240",pct:25.211},{name:"Pt-198",mass:"197.96789650",pct:7.356}]},
+  79: {isotopes:[{name:"Au-197",mass:"196.96656879",pct:100}]},
+  80: {isotopes:[{name:"Hg-196",mass:"195.96582960",pct:0.15},{name:"Hg-198",mass:"197.96676860",pct:9.97},{name:"Hg-199",mass:"198.96827973",pct:16.87},{name:"Hg-200",mass:"199.96832659",pct:23.10},{name:"Hg-201",mass:"200.97030280",pct:13.18},{name:"Hg-202",mass:"201.97064340",pct:29.86},{name:"Hg-204",mass:"203.97349398",pct:6.87}]},
+  81: {isotopes:[{name:"Tl-203",mass:"202.97234340",pct:29.52},{name:"Tl-205",mass:"204.97442780",pct:70.48}]},
+  82: {isotopes:[{name:"Pb-204",mass:"203.97303936",pct:1.4},{name:"Pb-206",mass:"205.97446570",pct:24.1},{name:"Pb-207",mass:"206.97589730",pct:22.1},{name:"Pb-208",mass:"207.97666530",pct:52.4}]},
+  83: {isotopes:[{name:"Bi-209",mass:"208.98039910",pct:100,note:"primordial radioactive (t½=1.9×10¹⁹ y)"}]},
+  84: {synthetic:true, isotopes:[{name:"Po-209 (longest-lived)",mass:"208.9824308",pct:null}]},
+  85: {synthetic:true, isotopes:[{name:"At-210 (longest natural)",mass:"209.9871479",pct:null}]},
+  86: {synthetic:true, isotopes:[{name:"Rn-222 (most common)",mass:"222.0175782",pct:null,note:"from U-238 decay chain"}]},
+  87: {synthetic:true, isotopes:[{name:"Fr-223 (most stable natural)",mass:"223.0197360",pct:null}]},
+  88: {synthetic:true, isotopes:[{name:"Ra-226 (most stable)",mass:"226.0254103",pct:null,note:"t½=1600 y"}]},
+  89: {synthetic:true, isotopes:[{name:"Ac-227",mass:"227.0277523",pct:null,note:"t½=21.8 y"}]},
+  90: {isotopes:[{name:"Th-230",mass:"230.0331340",pct:0.0002,note:"trace"},{name:"Th-232",mass:"232.0380558",pct:99.9998,note:"radioactive (t½=14 Gy)"}]},
+  91: {synthetic:true, isotopes:[{name:"Pa-231",mass:"231.0358842",pct:null,note:"t½=32760 y"}]},
+  92: {isotopes:[{name:"U-234",mass:"234.0409523",pct:0.0054,note:"radioactive"},{name:"U-235",mass:"235.0439301",pct:0.7204,note:"radioactive (t½=704 My)"},{name:"U-238",mass:"238.0507884",pct:99.2742,note:"radioactive (t½=4.47 Gy)"}]},
+  93: {synthetic:true, isotopes:[{name:"Np-237",mass:"237.0481736",pct:null,note:"t½=2.14 My"}]},
+  94: {synthetic:true, isotopes:[{name:"Pu-244 (longest-lived)",mass:"244.0642044",pct:null,note:"t½=80.8 My"}]},
+  95: {synthetic:true, isotopes:[{name:"Am-243",mass:"243.0613813",pct:null,note:"t½=7370 y"}]},
+  96: {synthetic:true, isotopes:[{name:"Cm-247",mass:"247.0703541",pct:null,note:"t½=15.6 My"}]},
+  97: {synthetic:true, isotopes:[{name:"Bk-247",mass:"247.0703073",pct:null,note:"t½=1380 y"}]},
+  98: {synthetic:true, isotopes:[{name:"Cf-251",mass:"251.0795886",pct:null,note:"t½=898 y"}]},
+  99: {synthetic:true, isotopes:[{name:"Es-252",mass:"252.0829800",pct:null,note:"t½=471.7 d"}]},
+  100:{synthetic:true, isotopes:[{name:"Fm-257",mass:"257.0951061",pct:null,note:"t½=100.5 d"}]},
+  101:{synthetic:true, isotopes:[{name:"Md-258",mass:"258.0984315",pct:null,note:"t½=51.5 d"}]},
+  102:{synthetic:true, isotopes:[{name:"No-259",mass:"259.1010290",pct:null,note:"t½=58 min"}]},
+  103:{synthetic:true, isotopes:[{name:"Lr-266",mass:"266.1198",pct:null,note:"t½=~11 h"}]},
+  104:{synthetic:true, isotopes:[{name:"Rf-267",mass:"267.1218",pct:null,note:"t½=~1.3 h"}]},
+  105:{synthetic:true, isotopes:[{name:"Db-268",mass:"268.1257",pct:null,note:"t½=~16 h"}]},
+  106:{synthetic:true, isotopes:[{name:"Sg-271",mass:"271.1339",pct:null,note:"t½=~2 min"}]},
+  107:{synthetic:true, isotopes:[{name:"Bh-272",mass:"272.1383",pct:null,note:"t½=~10 s"}]},
+  108:{synthetic:true, isotopes:[{name:"Hs-270",mass:"270.1343",pct:null,note:"t½=~10 s"}]},
+  109:{synthetic:true, isotopes:[{name:"Mt-276",mass:"276.1516",pct:null,note:"t½=~0.7 s"}]},
+  110:{synthetic:true, isotopes:[{name:"Ds-281",mass:"281.1645",pct:null,note:"t½=~14 s"}]},
+  111:{synthetic:true, isotopes:[{name:"Rg-280",mass:"280.1645",pct:null,note:"t½=~4 s"}]},
+  112:{synthetic:true, isotopes:[{name:"Cn-285",mass:"285.1772",pct:null,note:"t½=~28 s"}]},
+  113:{synthetic:true, isotopes:[{name:"Nh-286",mass:"286.1822",pct:null,note:"t½=~10 s"}]},
+  114:{synthetic:true, isotopes:[{name:"Fl-289",mass:"289.1904",pct:null,note:"t½=~2.1 s"}]},
+  115:{synthetic:true, isotopes:[{name:"Mc-290",mass:"290.1960",pct:null,note:"t½=~0.65 s"}]},
+  116:{synthetic:true, isotopes:[{name:"Lv-293",mass:"293.2045",pct:null,note:"t½=~60 ms"}]},
+  117:{synthetic:true, isotopes:[{name:"Ts-294",mass:"294.2104",pct:null,note:"t½=~51 ms"}]},
+  118:{synthetic:true, isotopes:[{name:"Og-294",mass:"294.2139",pct:null,note:"t½=~0.9 ms"}]},
+};
+
+// ─── ISOTOPE PERIODIC TABLE ───────────────────────────────────────
+function buildIsotopeTable() {
+  const CAT_COLORS_HEX = {
+    "alkali":"#ef4444","alkali-earth":"#f97316","transition":"#3b82f6",
+    "post-trans":"#8b5cf6","metalloid":"#14b8a6","nonmetal":"#22c55e",
+    "halogen":"#eab308","noble-gas":"#ec4899","lanthanide":"#06b6d4","actinide":"#f59e0b"
+  };
+  const CAT_LABELS_MAP = {
+    "alkali":"Alkali Metal","alkali-earth":"Alkaline Earth Metal",
+    "transition":"Transition Metal","post-trans":"Post-Transition Metal",
+    "metalloid":"Metalloid","nonmetal":"Nonmetal","halogen":"Halogen",
+    "noble-gas":"Noble Gas","lanthanide":"Lanthanide","actinide":"Actinide"
+  };
+
+  const grid = document.getElementById("isotopePtGrid");
+  if (!grid || grid.children.length > 0) return; // already built
+
+  // Use explicit grid placement for every element (mirrors buildGrid approach)
+  ELEMENTS.forEach(el => {
+    const cell = document.createElement("div");
+    cell.className = `iso-el ${el.cat}`;
+    cell.style.gridRow = el.row;
+    cell.style.gridColumn = el.col;
+    cell.innerHTML = `
+      <div class="iso-z">${el.z}</div>
+      <div class="iso-sym">${el.sym}</div>
+      <div class="iso-mass">${el.mass}</div>`;
+    cell.addEventListener("mouseenter", (e) => showIsotopePopup(e, el, CAT_COLORS_HEX, CAT_LABELS_MAP));
+    cell.addEventListener("mousemove",  (e) => positionIsotopePopup(e));
+    cell.addEventListener("mouseleave", () => hideIsotopePopup());
+    grid.appendChild(cell);
+  });
+
+  // Center info block spanning rows 1-3, cols 3-12 (avoids H and He columns)
+  const ci = document.createElement("div");
+  ci.className = "iso-center";
+  ci.style.cssText = "grid-row:1/4;grid-column:3/13;pointer-events:none;";
+  ci.innerHTML = `
+    <div class="iso-big-title">Isotope Reference Table</div>
+    <div class="iso-sub">Hover any element for isotope data</div>
+    <div style="font-size:0.6rem;color:var(--text-muted);font-style:italic;
+      text-align:center;line-height:1.7;max-width:300px;margin-top:5px;">
+      Natural abundances from IUPAC 2021.<br>
+      Atomic masses from AME2020 / NUBASE2020.<br>
+      Synthetic elements show most stable isotope.
+    </div>`;
+  grid.appendChild(ci);
+
+  // Lanthanide gap label (row 6, cols 4-17 gap block)
+  const lanGap = document.createElement("div");
+  lanGap.style.cssText = "grid-row:6;grid-column:4/18;";
+  lanGap.className = "iso-gap-block";
+  lanGap.textContent = "* Lanthanides (57–71)";
+  grid.appendChild(lanGap);
+
+  // Actinide gap label (row 7, cols 4-17 gap block)
+  const actGap = document.createElement("div");
+  actGap.style.cssText = "grid-row:7;grid-column:4/18;";
+  actGap.className = "iso-gap-block";
+  actGap.textContent = "** Actinides (89–103)";
+  grid.appendChild(actGap);
+
+  // Series row gap
+  const sectionGap = document.createElement("div");
+  sectionGap.style.cssText = "grid-row:8;grid-column:1/-1;height:5px;";
+  grid.appendChild(sectionGap);
+
+  // Lanthanide / Actinide series labels (col 1-3, rows 8-9)
+  const lanLabel = document.createElement("div");
+  lanLabel.style.cssText = "grid-row:8;grid-column:1/4;";
+  lanLabel.className = "iso-series-label";
+  lanLabel.innerHTML = `<span style="color:var(--c-lanthanide);font-size:0.46rem;font-weight:800">* Lanthanides</span>`;
+  grid.appendChild(lanLabel);
+
+  const actLabel = document.createElement("div");
+  actLabel.style.cssText = "grid-row:9;grid-column:1/4;";
+  actLabel.className = "iso-series-label";
+  actLabel.innerHTML = `<span style="color:var(--c-actinide);font-size:0.46rem;font-weight:800">** Actinides</span>`;
+  grid.appendChild(actLabel);
+}
+
+function showIsotopePopup(e, el, catColors, catLabels) {
+  const popup = document.getElementById("isotopePopup");
+  const iData = ISOTOPE_DATA[el.z];
+  const color = catColors[el.cat] || "#94a3b8";
+  const catName = catLabels[el.cat] || el.cat;
+
+  let bodyHTML = "";
+  if (!iData) {
+    bodyHTML = `<div class="iso-synthetic">No isotope data available.</div>`;
+  } else if (iData.synthetic) {
+    const iso = iData.isotopes[0];
+    bodyHTML = `
+      <div class="iso-synthetic">⚠️ Synthetic element — no stable isotopes</div>
+      <table class="iso-table">
+        <thead><tr>
+          <th>Most Stable Isotope</th>
+          <th class="iso-th-r">Mass (u)</th>
+        </tr></thead>
+        <tbody>
+          <tr>
+            <td class="iso-name">${iso.name}</td>
+            <td>${iso.mass}</td>
+          </tr>
+          ${iso.note ? `<tr><td colspan="2" style="font-size:0.62rem;color:var(--text-muted);font-style:italic;">${iso.note}</td></tr>` : ""}
+        </tbody>
+      </table>`;
+  } else {
+    const rows = iData.isotopes.map(iso => {
+      const pctDisplay = iso.pct !== null ? iso.pct.toFixed(iso.pct < 0.01 ? 4 : iso.pct < 1 ? 3 : 2) + "%" : "—";
+      const barWidth = iso.pct !== null ? Math.max(3, iso.pct) : 0;
+      const isTrace = iso.pct === null;
+      const noteCell = iso.note ? `<div style="font-size:0.58rem;color:var(--text-muted);font-style:italic;">${iso.note}</div>` : "";
+      return `<tr>
+        <td class="iso-name">${iso.name}${noteCell}</td>
+        <td style="font-family:'Space Mono',monospace;font-size:0.68rem;">${iso.mass}</td>
+        <td class="iso-pct" style="color:${isTrace ? 'var(--text-muted)' : color}">
+          ${pctDisplay}
+          ${iso.pct !== null ? `<div class="iso-pct-bar" style="width:${Math.min(100,barWidth)}%;background:${color};"></div>` : ""}
+        </td>
+      </tr>`;
+    }).join("");
+
+    bodyHTML = `
+      <table class="iso-table">
+        <thead><tr>
+          <th>Isotope</th>
+          <th class="iso-th-r">Mass (u)</th>
+          <th class="iso-th-r">Abundance</th>
+        </tr></thead>
+        <tbody>${rows}</tbody>
+      </table>`;
+  }
+
+  popup.innerHTML = `
+    <div class="iso-popup-header">
+      <div class="iso-popup-box" style="background:color-mix(in srgb,${color} 40%,var(--surface2));">
+        <div class="ip-z">${el.z}</div>
+        <div class="ip-sym">${el.sym}</div>
+        <div class="ip-mass">${el.mass}</div>
+      </div>
+      <div class="iso-popup-name">
+        <h3>${el.name}</h3>
+        <span class="ip-cat" style="background:color-mix(in srgb,${color} 80%,#000)">${catName}</span>
+      </div>
+    </div>
+    ${bodyHTML}
+    <div class="iso-note">Sources: IUPAC 2021 atomic weights; AME2020/NUBASE2020 (Wang et al., 2021)</div>`;
+
+  popup.style.display = "block";
+  positionIsotopePopup(e);
+}
+
+function positionIsotopePopup(e) {
+  const popup = document.getElementById("isotopePopup");
+  if (popup.style.display === "none") return;
+  const pw = popup.offsetWidth || 300;
+  const ph = popup.offsetHeight || 200;
+  const vw = window.innerWidth, vh = window.innerHeight;
+  let x = e.clientX + 14;
+  let y = e.clientY + 14;
+  if (x + pw > vw - 10) x = e.clientX - pw - 14;
+  if (y + ph > vh - 10) y = e.clientY - ph - 14;
+  popup.style.left = x + "px";
+  popup.style.top  = y + "px";
+}
+
+function hideIsotopePopup() {
+  document.getElementById("isotopePopup").style.display = "none";
+}
+
+// ─── ISOTOPE BUTTON WIRING ────────────────────────────────────────
+document.getElementById("btnIsotopes").addEventListener("click", () => {
+  buildIsotopeTable();
+  openPanel("isotopesOverlay");
+});
+document.getElementById("closeIsotopes").addEventListener("click", () => {
+  hideIsotopePopup();
+  closePanel("isotopesOverlay");
+});
+// Hide popup when panel closes via backdrop click
+document.getElementById("isotopesOverlay").addEventListener("click", e => {
+  if (e.target === document.getElementById("isotopesOverlay")) {
+    hideIsotopePopup();
+  }
+});
