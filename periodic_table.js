@@ -1596,3 +1596,1515 @@ document.getElementById("isotopesOverlay").addEventListener("click", e => {
     hideIsotopePopup();
   }
 });
+
+// ═══════════════════════════════════════════════════════════════════
+// ── FEATURE 1: ELECTRON CONFIGURATION & ORBITAL DIAGRAMS ──────────
+// ═══════════════════════════════════════════════════════════════════
+
+const CAT_COLORS_EC = {
+  "alkali":"#ef4444","alkali-earth":"#f97316","transition":"#3b82f6",
+  "post-trans":"#8b5cf6","metalloid":"#14b8a6","nonmetal":"#22c55e",
+  "halogen":"#eab308","noble-gas":"#ec4899","lanthanide":"#06b6d4","actinide":"#f59e0b"
+};
+const CAT_LABELS_EC = {
+  "alkali":"Alkali Metal","alkali-earth":"Alkaline Earth","transition":"Transition Metal",
+  "post-trans":"Post-Transition","metalloid":"Metalloid","nonmetal":"Nonmetal",
+  "halogen":"Halogen","noble-gas":"Noble Gas","lanthanide":"Lanthanide","actinide":"Actinide"
+};
+
+// Expand noble-gas shorthand config to full spdf notation
+function expandConfig(cfg) {
+  const noble = {
+    "[He]":"1s²",
+    "[Ne]":"1s² 2s² 2p⁶",
+    "[Ar]":"1s² 2s² 2p⁶ 3s² 3p⁶",
+    "[Kr]":"1s² 2s² 2p⁶ 3s² 3p⁶ 3d¹⁰ 4s² 4p⁶",
+    "[Xe]":"1s² 2s² 2p⁶ 3s² 3p⁶ 3d¹⁰ 4s² 4p⁶ 4d¹⁰ 5s² 5p⁶",
+    "[Rn]":"1s² 2s² 2p⁶ 3s² 3p⁶ 3d¹⁰ 4s² 4p⁶ 4d¹⁰ 4f¹⁴ 5s² 5p⁶ 5d¹⁰ 6s² 6p⁶",
+  };
+  for (const [k,v] of Object.entries(noble)) {
+    if (cfg.startsWith(k)) return v + cfg.slice(k.length);
+  }
+  return cfg;
+}
+
+// Parse full config string into subshell objects [{n,l,count}]
+function parseConfig(cfg) {
+  const full = expandConfig(cfg);
+  const pattern = /(\d+)([spdf])([\d⁰¹²³⁴⁵⁶⁷⁸⁹]+)/g;
+  const superMap = {"⁰":0,"¹":1,"²":2,"³":3,"⁴":4,"⁵":5,"⁶":6,"⁷":7,"⁸":8,"⁹":9,"¹⁰":10,"¹¹":11,"¹²":12,"¹³":13,"¹⁴":14};
+  const result = [];
+  let m;
+  while ((m = pattern.exec(full)) !== null) {
+    const superStr = m[3];
+    let count = 0;
+    if (superStr.length === 1) count = superMap[superStr] ?? parseInt(superStr);
+    else {
+      // multi-char superscript like ¹⁰
+      const twoChar = superStr.slice(0,2);
+      if (superMap[twoChar] !== undefined) count = superMap[twoChar];
+      else count = parseInt(superStr) || 0;
+    }
+    result.push({ n: parseInt(m[1]), l: m[2], count });
+  }
+  return result;
+}
+
+// Build orbital box diagram HTML for a subshell
+function orbitalBoxes(l, count) {
+  const capacity = {s:2, p:6, d:10, f:14};
+  const numBoxes = capacity[l] / 2; // number of orbital boxes
+  const boxes = [];
+  // Fill by Hund's rule: first spin-up, then pair
+  for (let i = 0; i < numBoxes; i++) {
+    let electrons = 0;
+    if (count > i) electrons++;          // spin-up
+    if (count > numBoxes + i) electrons++; // spin-down (pairing)
+    boxes.push(electrons);
+  }
+  return boxes.map(e => {
+    const arrows = e === 2 ? '⇅' : e === 1 ? '↑' : '';
+    return `<div class="ec-box filled-${e}" title="${e} electron(s)">${arrows}</div>`;
+  }).join('');
+}
+
+let ecSelectedEl = null;
+
+function buildElecConfigPanel() {
+  const body = document.getElementById("elecConfigBody");
+  if (body.children.length > 0) return;
+
+  // Build periodic table grid
+  let gridHTML = `<div class="ec-grid">`;
+  const posMap = {};
+  ELEMENTS.forEach(el => { posMap[`${el.row},${el.col}`] = el; });
+
+  for (let r = 1; r <= 9; r++) {
+    if (r === 8) {
+      gridHTML += `<div class="ec-section-gap"></div>`;
+      continue;
+    }
+    for (let c = 1; c <= 18; c++) {
+      // Center block rows 1-3 cols 3-12
+      if (r <= 3 && c >= 3 && c <= 12) {
+        if (r === 1 && c === 3) {
+          gridHTML += `<div class="ec-center" style="grid-row:1/4;grid-column:3/13;">
+            <div class="ec-big-title">Electron Configurations</div>
+            <div class="ec-sub">Click any element to see orbital diagram</div>
+            <div class="ec-block-legend">
+              <div class="ec-legend-item"><div class="ec-legend-dot" style="background:#ef4444;"></div><span class="ec-block-s">s block</span></div>
+              <div class="ec-legend-item"><div class="ec-legend-dot" style="background:#3b82f6;"></div><span class="ec-block-p">p block</span></div>
+              <div class="ec-legend-item"><div class="ec-legend-dot" style="background:#f97316;"></div><span class="ec-block-d">d block</span></div>
+              <div class="ec-legend-item"><div class="ec-legend-dot" style="background:#8b5cf6;"></div><span class="ec-block-f">f block</span></div>
+            </div>
+          </div>`;
+        }
+        continue;
+      }
+
+      const el = posMap[`${r},${c}`];
+      if (!el) {
+        // Lanthanide/Actinide gap blocks
+        if ((r === 6 || r === 7) && c >= 4 && c <= 17) {
+          if (c === 4) {
+            const label = r === 6 ? "Lanthanides (57–71)" : "Actinides (89–103)";
+            gridHTML += `<div style="grid-row:${r};grid-column:4/18;background:transparent;
+              border:1px dashed var(--border);border-radius:5px;display:flex;
+              align-items:center;justify-content:center;font-size:0.38rem;
+              color:var(--text-muted);font-weight:700;letter-spacing:0.5px;">${label}</div>`;
+          }
+          continue;
+        }
+        gridHTML += `<div style="grid-row:${r};grid-column:${c};aspect-ratio:1;"></div>`;
+        continue;
+      }
+
+      // Determine block colour overlay
+      const cfg = el.config || '';
+      let blockClass = '';
+      if (cfg.match(/\d+f[\d⁰-⁹]+$/)) blockClass = 'ec-block-f-bg';
+      else if (cfg.match(/\d+d[\d⁰-⁹]+$/)) blockClass = 'ec-block-d-bg';
+      else if (cfg.match(/\d+p[\d⁰-⁹]+$/)) blockClass = 'ec-block-p-bg';
+      else blockClass = 'ec-block-s-bg';
+
+      gridHTML += `<div class="ec-el ${el.cat}" 
+        style="grid-row:${el.row};grid-column:${el.col};"
+        data-z="${el.z}" title="${el.name}: ${el.config}">
+        <div class="ec-z">${el.z}</div>
+        <div class="ec-sym">${el.sym}</div>
+        <div class="ec-cfg">${el.config}</div>
+      </div>`;
+    }
+  }
+  gridHTML += `</div>`;
+
+  // Detail box placeholder
+  gridHTML += `<div class="ec-detail-box" id="ecDetailBox">
+    <div style="text-align:center;color:var(--text-muted);font-size:0.82rem;padding:20px 0;">
+      Click any element above to view its electron configuration and orbital diagram.
+    </div>
+  </div>`;
+
+  body.innerHTML = gridHTML;
+
+  // Wire click events
+  body.querySelectorAll('.ec-el').forEach(cell => {
+    cell.addEventListener('click', () => {
+      const z = parseInt(cell.dataset.z);
+      const el = ELEMENTS.find(e => e.z === z);
+      if (el) showEcDetail(el);
+      body.querySelectorAll('.ec-el').forEach(c => c.style.outline = '');
+      cell.style.outline = '3px solid var(--accent)';
+    });
+  });
+}
+
+function showEcDetail(el) {
+  const box = document.getElementById('ecDetailBox');
+  const color = CAT_COLORS_EC[el.cat] || '#94a3b8';
+  const catName = CAT_LABELS_EC[el.cat] || el.cat;
+  const fullCfg = expandConfig(el.config);
+  const subshells = parseConfig(el.config);
+
+  // Build orbital groups
+  let orbitalHTML = '';
+  const groups = [];
+  subshells.forEach(sub => {
+    const key = `${sub.n}${sub.l}`;
+    groups.push({key, n: sub.n, l: sub.l, count: sub.count});
+  });
+
+  // Group by principal quantum number for display
+  const byN = {};
+  groups.forEach(g => {
+    if (!byN[g.n]) byN[g.n] = [];
+    byN[g.n].push(g);
+  });
+
+  const sortedN = Object.entries(byN).sort((a,b) => parseInt(a[0]) - parseInt(b[0]));
+
+  // Energy axis (left side label)
+  orbitalHTML = `<div style="display:flex;gap:0;align-items:stretch;">
+    <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;
+      margin-right:8px;padding:4px 0;">
+      <div style="font-size:0.6rem;color:var(--text-muted);font-family:'Space Mono',monospace;
+        letter-spacing:1px;text-transform:uppercase;writing-mode:vertical-rl;
+        transform:rotate(180deg);white-space:nowrap;">Energy (E)</div>
+      <div style="font-size:1rem;color:var(--text-muted);margin-top:4px;">↑</div>
+    </div>
+    <div style="display:flex;flex-direction:column-reverse;gap:6px;flex:1;">`;
+
+  sortedN.forEach(([n, subs]) => {
+    orbitalHTML += `<div class="ec-subshell-group">
+      <div style="font-family:'Space Mono',monospace;font-size:0.58rem;font-weight:700;
+        color:var(--text-muted);min-width:28px;">n=${n}</div>`;
+    subs.forEach(sub => {
+      const blockColor = {s:'#ef4444',p:'#3b82f6',d:'#f97316',f:'#8b5cf6'}[sub.l] || '#94a3b8';
+      orbitalHTML += `<div style="display:flex;flex-direction:column;align-items:center;gap:3px;">
+        <div class="ec-subshell-label" style="color:${blockColor};">${sub.n}${sub.l}<sup>${sub.count}</sup></div>
+        <div class="ec-orbital-row">${orbitalBoxes(sub.l, sub.count)}</div>
+      </div>`;
+    });
+    orbitalHTML += `</div>`;
+  });
+
+  orbitalHTML += `</div></div>`;
+
+  // Anomalous configuration note
+  let anomNote = '';
+  const anomalous = [24,29,41,42,44,45,46,47,57,58,64,78,79,89,90,91,92,93,96];
+  if (anomalous.includes(el.z)) {
+    anomNote = `<div class="ec-note">⚠️ Anomalous configuration — half-filled or fully-filled subshell provides extra stability.</div>`;
+  }
+
+  box.innerHTML = `
+    <div class="ec-detail-header">
+      <div class="ec-detail-sbox" style="background:color-mix(in srgb,${color} 40%,var(--surface2));">
+        <div class="ed-z">${el.z}</div>
+        <div class="ed-sym">${el.sym}</div>
+        <div class="ed-mass">${el.mass}</div>
+      </div>
+      <div class="ec-detail-info">
+        <h3>${el.name}</h3>
+        <span class="ec-cat-badge" style="background:color-mix(in srgb,${color} 80%,#000)">${catName}</span>
+        <div style="font-size:0.72rem;color:var(--text-muted);margin-top:4px;">
+          Period ${el.period} &nbsp;·&nbsp; Group ${el.group || '—'} &nbsp;·&nbsp; ${el.state}
+        </div>
+      </div>
+    </div>
+    <div class="ec-config-display">
+      <div style="font-family:'Space Mono',monospace;font-size:0.6rem;letter-spacing:1px;
+        text-transform:uppercase;color:var(--text-muted);margin-bottom:4px;">Shorthand</div>
+      <div class="ec-config-full">${el.config}</div>
+      <div style="font-family:'Space Mono',monospace;font-size:0.6rem;letter-spacing:1px;
+        text-transform:uppercase;color:var(--text-muted);margin-bottom:4px;margin-top:8px;">Full configuration</div>
+      <div class="ec-config-full" style="font-size:0.75rem;color:var(--text);">${fullCfg}</div>
+    </div>
+    <div style="font-family:'Space Mono',monospace;font-size:0.6rem;letter-spacing:1px;
+      text-transform:uppercase;color:var(--text-muted);margin:10px 0 6px;">Orbital box diagram</div>
+    ${orbitalHTML}
+    ${anomNote}`;
+}
+
+document.getElementById("btnElecConfig").addEventListener("click", () => {
+  buildElecConfigPanel();
+  openPanel("elecConfigOverlay");
+});
+document.getElementById("closeElecConfig").addEventListener("click", () => closePanel("elecConfigOverlay"));
+
+
+// ═══════════════════════════════════════════════════════════════════
+// ── FEATURE 2: IONIC COMPOUND NAMING TOOL ─────────────────────────
+// ═══════════════════════════════════════════════════════════════════
+
+const NAMING_CATIONS = [
+  {sym:"Al³⁺",  name:"Aluminum",               charge:3,  type:"mono"},
+  {sym:"NH₄⁺",  name:"Ammonium",               charge:1,  type:"poly"},
+  {sym:"Ba²⁺",  name:"Barium",                 charge:2,  type:"mono"},
+  {sym:"Be²⁺",  name:"Beryllium",              charge:2,  type:"mono"},
+  {sym:"Ca²⁺",  name:"Calcium",               charge:2,  type:"mono"},
+  {sym:"Cs⁺",   name:"Cesium",                charge:1,  type:"mono"},
+  {sym:"Cr²⁺",  name:"Chromium(II)",           charge:2,  type:"trans"},
+  {sym:"Cr³⁺",  name:"Chromium(III)",          charge:3,  type:"trans"},
+  {sym:"Co²⁺",  name:"Cobalt(II)",             charge:2,  type:"trans"},
+  {sym:"Co³⁺",  name:"Cobalt(III)",            charge:3,  type:"trans"},
+  {sym:"Cu⁺",   name:"Copper(I)",              charge:1,  type:"trans"},
+  {sym:"Cu²⁺",  name:"Copper(II)",             charge:2,  type:"trans"},
+  {sym:"Fe²⁺",  name:"Iron(II)",               charge:2,  type:"trans"},
+  {sym:"Fe³⁺",  name:"Iron(III)",              charge:3,  type:"trans"},
+  {sym:"Pb²⁺",  name:"Lead(II)",               charge:2,  type:"trans"},
+  {sym:"Pb⁴⁺",  name:"Lead(IV)",               charge:4,  type:"trans"},
+  {sym:"Li⁺",   name:"Lithium",                charge:1,  type:"mono"},
+  {sym:"Mg²⁺",  name:"Magnesium",              charge:2,  type:"mono"},
+  {sym:"Mn²⁺",  name:"Manganese(II)",          charge:2,  type:"trans"},
+  {sym:"Mn⁴⁺",  name:"Manganese(IV)",          charge:4,  type:"trans"},
+  {sym:"Hg₂²⁺", name:"Mercury(I)",             charge:2,  type:"trans", unitCharge:1},
+  {sym:"Hg²⁺",  name:"Mercury(II)",            charge:2,  type:"trans"},
+  {sym:"Ni²⁺",  name:"Nickel(II)",             charge:2,  type:"trans"},
+  {sym:"K⁺",    name:"Potassium",              charge:1,  type:"mono"},
+  {sym:"Ag⁺",   name:"Silver",                 charge:1,  type:"trans"},
+  {sym:"Na⁺",   name:"Sodium",                 charge:1,  type:"mono"},
+  {sym:"Sr²⁺",  name:"Strontium",              charge:2,  type:"mono"},
+  {sym:"Sn²⁺",  name:"Tin(II)",                charge:2,  type:"trans"},
+  {sym:"Sn⁴⁺",  name:"Tin(IV)",                charge:4,  type:"trans"},
+  {sym:"Zn²⁺",  name:"Zinc",                   charge:2,  type:"mono"},
+  {sym:"H⁺",    name:"Hydrogen",              charge:1,  type:"mono"},
+];
+
+const NAMING_ANIONS = [
+  {sym:"Br⁻",      name:"Bromide",              charge:-1, type:"mono"},
+  {sym:"CO₃²⁻",    name:"Carbonate",            charge:-2, type:"poly"},
+  {sym:"Cl⁻",      name:"Chloride",             charge:-1, type:"mono"},
+  {sym:"CrO₄²⁻",   name:"Chromate",             charge:-2, type:"poly"},
+  {sym:"CN⁻",      name:"Cyanide",              charge:-1, type:"poly"},
+  {sym:"Cr₂O₇²⁻",  name:"Dichromate",           charge:-2, type:"poly"},
+  {sym:"F⁻",       name:"Fluoride",             charge:-1, type:"mono"},
+  {sym:"H₂PO₄⁻",   name:"Dihydrogen phosphate", charge:-1, type:"poly"},
+  {sym:"CH₃COO⁻",  name:"Acetate",              charge:-1, type:"poly"},
+  {sym:"HCO₃⁻",    name:"Hydrogen carbonate",   charge:-1, type:"poly"},
+  {sym:"HSO₄⁻",    name:"Hydrogen sulfate",     charge:-1, type:"poly"},
+  {sym:"OH⁻",      name:"Hydroxide",            charge:-1, type:"poly"},
+  {sym:"ClO⁻",     name:"Hypochlorite",         charge:-1, type:"poly"},
+  {sym:"I⁻",       name:"Iodide",               charge:-1, type:"mono"},
+  {sym:"HPO₄²⁻",   name:"Monohydrogen phosphate",charge:-2, type:"poly"},
+  {sym:"NO₃⁻",     name:"Nitrate",              charge:-1, type:"poly"},
+  {sym:"NO₂⁻",     name:"Nitrite",              charge:-1, type:"poly"},
+  {sym:"O²⁻",      name:"Oxide",                charge:-2, type:"mono"},
+  {sym:"ClO₄⁻",    name:"Perchlorate",          charge:-1, type:"poly"},
+  {sym:"MnO₄⁻",    name:"Permanganate",         charge:-1, type:"poly"},
+  {sym:"PO₄³⁻",    name:"Phosphate",            charge:-3, type:"poly"},
+  {sym:"S²⁻",      name:"Sulfide",              charge:-2, type:"mono"},
+  {sym:"SO₄²⁻",    name:"Sulfate",              charge:-2, type:"poly"},
+  {sym:"SO₃²⁻",    name:"Sulfite",              charge:-2, type:"poly"},
+  {sym:"SCN⁻",     name:"Thiocyanate",          charge:-1, type:"poly"},
+  {sym:"N³⁻",      name:"Nitride",              charge:-3, type:"mono"},
+  {sym:"C₂O₄²⁻",   name:"Oxalate",             charge:-2, type:"poly"},
+];
+
+function gcd(a, b) { return b === 0 ? a : gcd(b, a % b); }
+
+function buildNamingPanel() {
+  const body = document.getElementById("namingBody");
+  if (body.children.length > 0) return;
+
+  const catOptions = NAMING_CATIONS.map((c,i) =>
+    `<option value="${i}">${c.sym} — ${c.name}</option>`).join('');
+  const anionOptions = NAMING_ANIONS.map((a,i) =>
+    `<option value="${i}">${a.sym} — ${a.name}</option>`).join('');
+
+  body.innerHTML = `
+    <div class="naming-wrap">
+      <div class="naming-selects">
+        <div>
+          <div class="naming-select-label">Cation (positive ion)</div>
+          <select class="naming-select" id="namingCat">${catOptions}</select>
+        </div>
+        <div class="naming-plus">+</div>
+        <div>
+          <div class="naming-select-label">Anion (negative ion)</div>
+          <select class="naming-select" id="namingAnion">${anionOptions}</select>
+        </div>
+      </div>
+
+      <div class="naming-result" id="namingResult"></div>
+
+      <div class="naming-rules">
+        <div class="naming-rules-title">📋 Ionic Naming Rules</div>
+        <div class="naming-rule">1. Name the <strong>cation first</strong> (use Roman numerals for variable-charge metals).</div>
+        <div class="naming-rule">2. Name the <strong>anion second</strong>: monatomic anions end in <em>-ide</em>; polyatomic anions keep their own name.</div>
+        <div class="naming-rule">3. Balance charges using the <strong>criss-cross method</strong>: subscript of each ion = absolute charge of the other. Reduce to lowest ratio.</div>
+        <div class="naming-rule">4. If subscript = 1, <strong>omit it</strong>. Polyatomic ions with subscript > 1 need <strong>parentheses</strong>.</div>
+      </div>
+    </div>`;
+
+  const updateResult = () => {
+    const cat = NAMING_CATIONS[document.getElementById('namingCat').value];
+    const anion = NAMING_ANIONS[document.getElementById('namingAnion').value];
+    const catCharge = cat.charge;
+    const anionCharge = Math.abs(anion.charge);
+    const d = gcd(catCharge, anionCharge);
+    let catN = anionCharge / d;
+    let anionN = catCharge / d;
+
+    // Special case: Hg₂²⁺ is a diatomic cation
+    let catFormula = cat.sym.replace(/[⁺⁻⁰¹²³⁴⁵⁶⁷⁸⁹]+$/, '');
+    let anionFormula = anion.sym.replace(/[⁺⁻⁰¹²³⁴⁵⁶⁷⁸⁹]+$/, '');
+    const isPolyAnion = anion.type === 'poly';
+    const isPolyCat = cat.type === 'poly';
+
+    const toSub = n => n === 1 ? '' : ['','₁','₂','₃','₄','₅','₆','₇','₈','₉'][n] || String(n);
+
+    let formula = '';
+    const catPart = isPolyCat && catN > 1 ? `(${catFormula})${toSub(catN)}` : `${catFormula}${toSub(catN)}`;
+    const anionPart = isPolyAnion && anionN > 1 ? `(${anionFormula})${toSub(anionN)}` : `${anionFormula}${toSub(anionN)}`;
+    formula = catPart + anionPart;
+
+    const compound = `${cat.name} ${anion.name.toLowerCase()}`;
+
+    const breakdown = catN === 1 && anionN === 1
+      ? `1 ${cat.sym} + 1 ${anion.sym} → charges balance directly`
+      : `${catN} × (${cat.sym}) + ${anionN} × (${anion.sym}) → total charge = 0`;
+
+    document.getElementById('namingResult').innerHTML = `
+      <div class="naming-result-formula">${formula}</div>
+      <div class="naming-result-name">${compound}</div>
+      <div class="naming-result-breakdown">${breakdown}</div>`;
+  };
+
+  updateResult();
+  document.getElementById('namingCat').addEventListener('change', updateResult);
+  document.getElementById('namingAnion').addEventListener('change', updateResult);
+}
+
+document.getElementById("btnNaming").addEventListener("click", () => {
+  buildNamingPanel();
+  openPanel("namingOverlay");
+});
+document.getElementById("closeNaming").addEventListener("click", () => closePanel("namingOverlay"));
+
+
+// ═══════════════════════════════════════════════════════════════════
+// ── FEATURE 3: VSEPR & MOLECULAR GEOMETRY ─────────────────────────
+// ═══════════════════════════════════════════════════════════════════
+
+const VSEPR_SHAPES = [
+  {
+    name:"Linear", formula:"AX₂", steric:2, bonding:2, lone:0,
+    angle:"180°", polarity:"nonpolar", polarityNote:"(if same atoms)",
+    examples:"CO₂, BeCl₂, CS₂, HCN, C₂H₂",
+    description:"Two bonding pairs, no lone pairs. All atoms in a straight line.",
+    svgPath:`<line x1="20" y1="50" x2="100" y2="50" stroke="#3b82f6" stroke-width="2.5"/>
+      <circle cx="20" cy="50" r="11" fill="#22c55e" stroke="none"/>
+      <circle cx="60" cy="50" r="14" fill="#94a3b8" stroke="none"/>
+      <circle cx="100" cy="50" r="11" fill="#22c55e" stroke="none"/>
+      <text x="60" y="54" text-anchor="middle" font-size="9" fill="white" font-weight="bold">A</text>
+      <text x="20" y="54" text-anchor="middle" font-size="8" fill="white">X</text>
+      <text x="100" y="54" text-anchor="middle" font-size="8" fill="white">X</text>`
+  },
+  {
+    name:"Bent (2 lone pairs)", formula:"AX₂E₂", steric:4, bonding:2, lone:2,
+    angle:"~104.5°", polarity:"polar",
+    examples:"H₂O, H₂S, SCl₂, OF₂",
+    description:"Tetrahedral electron geometry, 2 lone pairs compress the bond angle below 109.5°.",
+    svgPath:`<line x1="60" y1="50" x2="30" y2="80" stroke="#3b82f6" stroke-width="2.5"/>
+      <line x1="60" y1="50" x2="90" y2="80" stroke="#3b82f6" stroke-width="2.5"/>
+      <circle cx="60" cy="50" r="14" fill="#94a3b8" stroke="none"/>
+      <circle cx="30" cy="80" r="11" fill="#22c55e" stroke="none"/>
+      <circle cx="90" cy="80" r="11" fill="#22c55e" stroke="none"/>
+      <ellipse cx="44" cy="30" rx="8" ry="5" fill="#ef4444" opacity="0.7"/>
+      <ellipse cx="76" cy="30" rx="8" ry="5" fill="#ef4444" opacity="0.7"/>
+      <text x="60" y="54" text-anchor="middle" font-size="9" fill="white" font-weight="bold">A</text>
+      <text x="30" y="84" text-anchor="middle" font-size="8" fill="white">X</text>
+      <text x="90" y="84" text-anchor="middle" font-size="8" fill="white">X</text>
+      <text x="44" y="34" text-anchor="middle" font-size="7" fill="#ef4444">::</text>
+      <text x="76" y="34" text-anchor="middle" font-size="7" fill="#ef4444">::</text>`
+  },
+  {
+    name:"Bent (1 lone pair)", formula:"AX₂E₁", steric:3, bonding:2, lone:1,
+    angle:"~120°", polarity:"polar",
+    examples:"SO₂, O₃, NO₂⁻",
+    description:"Trigonal planar electron geometry, 1 lone pair reduces bond angle slightly below 120°.",
+    svgPath:`<line x1="60" y1="55" x2="25" y2="85" stroke="#3b82f6" stroke-width="2.5"/>
+      <line x1="60" y1="55" x2="95" y2="85" stroke="#3b82f6" stroke-width="2.5"/>
+      <circle cx="60" cy="55" r="14" fill="#94a3b8" stroke="none"/>
+      <circle cx="25" cy="85" r="11" fill="#22c55e" stroke="none"/>
+      <circle cx="95" cy="85" r="11" fill="#22c55e" stroke="none"/>
+      <ellipse cx="60" cy="28" rx="9" ry="5" fill="#ef4444" opacity="0.7"/>
+      <text x="60" y="59" text-anchor="middle" font-size="9" fill="white" font-weight="bold">A</text>
+      <text x="25" y="89" text-anchor="middle" font-size="8" fill="white">X</text>
+      <text x="95" y="89" text-anchor="middle" font-size="8" fill="white">X</text>
+      <text x="60" y="32" text-anchor="middle" font-size="7" fill="#ef4444">::</text>`
+  },
+  {
+    name:"Trigonal Planar", formula:"AX₃", steric:3, bonding:3, lone:0,
+    angle:"120°", polarity:"nonpolar", polarityNote:"(if same atoms)",
+    examples:"BF₃, AlCl₃, SO₃, NO₃⁻, CO₃²⁻",
+    description:"Three bonding pairs in a flat triangle. All bond angles exactly 120°.",
+    svgPath:`<line x1="60" y1="45" x2="20" y2="85" stroke="#3b82f6" stroke-width="2.5"/>
+      <line x1="60" y1="45" x2="100" y2="85" stroke="#3b82f6" stroke-width="2.5"/>
+      <line x1="60" y1="45" x2="60" y2="15" stroke="#3b82f6" stroke-width="2.5"/>
+      <circle cx="60" cy="45" r="14" fill="#94a3b8" stroke="none"/>
+      <circle cx="20" cy="85" r="10" fill="#22c55e" stroke="none"/>
+      <circle cx="100" cy="85" r="10" fill="#22c55e" stroke="none"/>
+      <circle cx="60" cy="15" r="10" fill="#22c55e" stroke="none"/>
+      <text x="60" y="49" text-anchor="middle" font-size="9" fill="white" font-weight="bold">A</text>
+      <text x="20" y="89" text-anchor="middle" font-size="8" fill="white">X</text>
+      <text x="100" y="89" text-anchor="middle" font-size="8" fill="white">X</text>
+      <text x="60" y="19" text-anchor="middle" font-size="8" fill="white">X</text>`
+  },
+  {
+    name:"Tetrahedral", formula:"AX₄", steric:4, bonding:4, lone:0,
+    angle:"109.5°", polarity:"nonpolar", polarityNote:"(if same atoms)",
+    examples:"CH₄, SiH₄, CCl₄, NH₄⁺, SO₄²⁻, PO₄³⁻",
+    description:"Four bonding pairs arranged to maximise separation. Classic 3D geometry.",
+    svgPath:`<line x1="60" y1="45" x2="20" y2="80" stroke="#3b82f6" stroke-width="2.5"/>
+      <line x1="60" y1="45" x2="100" y2="80" stroke="#3b82f6" stroke-width="2.5"/>
+      <line x1="60" y1="45" x2="38" y2="20" stroke="#3b82f6" stroke-width="1.5" stroke-dasharray="4,3"/>
+      <line x1="60" y1="45" x2="82" y2="20" stroke="#3b82f6" stroke-width="3.5"/>
+      <circle cx="60" cy="45" r="14" fill="#94a3b8" stroke="none"/>
+      <circle cx="20" cy="80" r="10" fill="#22c55e" stroke="none"/>
+      <circle cx="100" cy="80" r="10" fill="#22c55e" stroke="none"/>
+      <circle cx="38" cy="20" r="10" fill="#22c55e" opacity="0.6" stroke="none"/>
+      <circle cx="82" cy="20" r="10" fill="#22c55e" stroke="none"/>
+      <text x="60" y="49" text-anchor="middle" font-size="9" fill="white" font-weight="bold">A</text>
+      <text x="20" y="84" text-anchor="middle" font-size="8" fill="white">X</text>
+      <text x="100" y="84" text-anchor="middle" font-size="8" fill="white">X</text>
+      <text x="38" y="24" text-anchor="middle" font-size="8" fill="white">X</text>
+      <text x="82" y="24" text-anchor="middle" font-size="8" fill="white">X</text>`
+  },
+  {
+    name:"Trigonal Pyramidal", formula:"AX₃E₁", steric:4, bonding:3, lone:1,
+    angle:"~107°", polarity:"polar",
+    examples:"NH₃, PH₃, PCl₃, NF₃, SO₃²⁻",
+    description:"Tetrahedral electron geometry; lone pair pushes bonding pairs down into a pyramid.",
+    svgPath:`<line x1="60" y1="45" x2="20" y2="82" stroke="#3b82f6" stroke-width="2.5"/>
+      <line x1="60" y1="45" x2="100" y2="82" stroke="#3b82f6" stroke-width="2.5"/>
+      <line x1="60" y1="45" x2="60" y2="85" stroke="#3b82f6" stroke-width="3.5"/>
+      <ellipse cx="60" cy="25" rx="9" ry="5" fill="#ef4444" opacity="0.8"/>
+      <circle cx="60" cy="45" r="14" fill="#94a3b8" stroke="none"/>
+      <circle cx="20" cy="82" r="10" fill="#22c55e" stroke="none"/>
+      <circle cx="100" cy="82" r="10" fill="#22c55e" stroke="none"/>
+      <circle cx="60" cy="85" r="10" fill="#22c55e" stroke="none"/>
+      <text x="60" y="49" text-anchor="middle" font-size="9" fill="white" font-weight="bold">A</text>
+      <text x="20" y="86" text-anchor="middle" font-size="8" fill="white">X</text>
+      <text x="100" y="86" text-anchor="middle" font-size="8" fill="white">X</text>
+      <text x="60" y="89" text-anchor="middle" font-size="8" fill="white">X</text>
+      <text x="60" y="29" text-anchor="middle" font-size="7" fill="#ef4444">::</text>`
+  },
+  {
+    name:"Trigonal Bipyramidal", formula:"AX₅", steric:5, bonding:5, lone:0,
+    angle:"90°/120°", polarity:"nonpolar", polarityNote:"(if same atoms)",
+    examples:"PCl₅, PF₅, AsF₅",
+    description:"Five bonding pairs: three equatorial (120° apart) and two axial (90° to equatorial).",
+    svgPath:`<line x1="60" y1="50" x2="60" y2="10" stroke="#3b82f6" stroke-width="2.5"/>
+      <line x1="60" y1="50" x2="60" y2="92" stroke="#3b82f6" stroke-width="2.5"/>
+      <line x1="60" y1="50" x2="15" y2="75" stroke="#3b82f6" stroke-width="2.5"/>
+      <line x1="60" y1="50" x2="105" y2="75" stroke="#3b82f6" stroke-width="2.5"/>
+      <line x1="60" y1="50" x2="25" y2="30" stroke="#3b82f6" stroke-width="1.5" stroke-dasharray="4,3"/>
+      <circle cx="60" cy="50" r="13" fill="#94a3b8" stroke="none"/>
+      <circle cx="60" cy="10" r="9" fill="#22c55e" stroke="none"/>
+      <circle cx="60" cy="92" r="9" fill="#22c55e" stroke="none"/>
+      <circle cx="15" cy="75" r="9" fill="#22c55e" stroke="none"/>
+      <circle cx="105" cy="75" r="9" fill="#22c55e" stroke="none"/>
+      <circle cx="25" cy="30" r="9" fill="#22c55e" opacity="0.6" stroke="none"/>
+      <text x="60" y="54" text-anchor="middle" font-size="9" fill="white" font-weight="bold">A</text>`
+  },
+  {
+    name:"Octahedral", formula:"AX₆", steric:6, bonding:6, lone:0,
+    angle:"90°", polarity:"nonpolar", polarityNote:"(if same atoms)",
+    examples:"SF₆, PCl₆⁻, [Co(NH₃)₆]³⁺",
+    description:"Six bonding pairs symmetrically arranged along x, y, z axes. All angles 90°.",
+    svgPath:`<line x1="60" y1="50" x2="60" y2="10" stroke="#3b82f6" stroke-width="2.5"/>
+      <line x1="60" y1="50" x2="60" y2="90" stroke="#3b82f6" stroke-width="2.5"/>
+      <line x1="60" y1="50" x2="15" y2="50" stroke="#3b82f6" stroke-width="2.5"/>
+      <line x1="60" y1="50" x2="105" y2="50" stroke="#3b82f6" stroke-width="2.5"/>
+      <line x1="60" y1="50" x2="35" y2="25" stroke="#3b82f6" stroke-width="1.5" stroke-dasharray="4,3"/>
+      <line x1="60" y1="50" x2="85" y2="75" stroke="#3b82f6" stroke-width="3"/>
+      <circle cx="60" cy="50" r="13" fill="#94a3b8" stroke="none"/>
+      <circle cx="60" cy="10" r="9" fill="#22c55e" stroke="none"/>
+      <circle cx="60" cy="90" r="9" fill="#22c55e" stroke="none"/>
+      <circle cx="15" cy="50" r="9" fill="#22c55e" stroke="none"/>
+      <circle cx="105" cy="50" r="9" fill="#22c55e" stroke="none"/>
+      <circle cx="35" cy="25" r="9" fill="#22c55e" opacity="0.6" stroke="none"/>
+      <circle cx="85" cy="75" r="9" fill="#22c55e" stroke="none"/>
+      <text x="60" y="54" text-anchor="middle" font-size="9" fill="white" font-weight="bold">A</text>`
+  },
+  {
+    name:"See-Saw", formula:"AX₄E₁", steric:5, bonding:4, lone:1,
+    angle:"~173°/102°", polarity:"polar",
+    examples:"SF₄, XeO₂F₂, IF₄⁺",
+    description:"Trigonal bipyramidal base; one equatorial lone pair creates an asymmetric see-saw shape.",
+    svgPath:`<line x1="60" y1="50" x2="60" y2="12" stroke="#3b82f6" stroke-width="2.5"/>
+      <line x1="60" y1="50" x2="60" y2="90" stroke="#3b82f6" stroke-width="2.5"/>
+      <line x1="60" y1="50" x2="105" y2="72" stroke="#3b82f6" stroke-width="2.5"/>
+      <line x1="60" y1="50" x2="20" y2="35" stroke="#3b82f6" stroke-width="1.5" stroke-dasharray="4,3"/>
+      <ellipse cx="18" cy="68" rx="9" ry="5" fill="#ef4444" opacity="0.8"/>
+      <circle cx="60" cy="50" r="13" fill="#94a3b8" stroke="none"/>
+      <circle cx="60" cy="12" r="9" fill="#22c55e" stroke="none"/>
+      <circle cx="60" cy="90" r="9" fill="#22c55e" stroke="none"/>
+      <circle cx="105" cy="72" r="9" fill="#22c55e" stroke="none"/>
+      <circle cx="20" cy="35" r="9" fill="#22c55e" opacity="0.6" stroke="none"/>
+      <text x="60" y="54" text-anchor="middle" font-size="9" fill="white" font-weight="bold">A</text>`
+  },
+  {
+    name:"T-Shaped", formula:"AX₃E₂", steric:5, bonding:3, lone:2,
+    angle:"~87°/180°", polarity:"polar",
+    examples:"ClF₃, BrF₃",
+    description:"Trigonal bipyramidal base with two equatorial lone pairs; three atoms form a T.",
+    svgPath:`<line x1="60" y1="50" x2="60" y2="10" stroke="#3b82f6" stroke-width="2.5"/>
+      <line x1="60" y1="50" x2="60" y2="92" stroke="#3b82f6" stroke-width="2.5"/>
+      <line x1="60" y1="50" x2="105" y2="50" stroke="#3b82f6" stroke-width="2.5"/>
+      <ellipse cx="18" cy="38" rx="9" ry="5" fill="#ef4444" opacity="0.8"/>
+      <ellipse cx="18" cy="62" rx="9" ry="5" fill="#ef4444" opacity="0.8"/>
+      <circle cx="60" cy="50" r="13" fill="#94a3b8" stroke="none"/>
+      <circle cx="60" cy="10" r="9" fill="#22c55e" stroke="none"/>
+      <circle cx="60" cy="92" r="9" fill="#22c55e" stroke="none"/>
+      <circle cx="105" cy="50" r="9" fill="#22c55e" stroke="none"/>
+      <text x="60" y="54" text-anchor="middle" font-size="9" fill="white" font-weight="bold">A</text>`
+  },
+  {
+    name:"Square Planar", formula:"AX₄E₂", steric:6, bonding:4, lone:2,
+    angle:"90°", polarity:"nonpolar", polarityNote:"(if same atoms)",
+    examples:"XeF₄, [PtCl₄]²⁻, [AuCl₄]⁻",
+    description:"Octahedral base with two axial lone pairs. All four atoms in the same plane.",
+    svgPath:`<line x1="60" y1="50" x2="20" y2="50" stroke="#3b82f6" stroke-width="2.5"/>
+      <line x1="60" y1="50" x2="100" y2="50" stroke="#3b82f6" stroke-width="2.5"/>
+      <line x1="60" y1="50" x2="60" y2="12" stroke="#3b82f6" stroke-width="2.5"/>
+      <line x1="60" y1="50" x2="60" y2="90" stroke="#3b82f6" stroke-width="2.5"/>
+      <ellipse cx="40" cy="25" rx="8" ry="5" fill="#ef4444" opacity="0.8"/>
+      <ellipse cx="80" cy="75" rx="8" ry="5" fill="#ef4444" opacity="0.8"/>
+      <circle cx="60" cy="50" r="13" fill="#94a3b8" stroke="none"/>
+      <circle cx="20" cy="50" r="9" fill="#22c55e" stroke="none"/>
+      <circle cx="100" cy="50" r="9" fill="#22c55e" stroke="none"/>
+      <circle cx="60" cy="12" r="9" fill="#22c55e" stroke="none"/>
+      <circle cx="60" cy="90" r="9" fill="#22c55e" stroke="none"/>
+      <text x="60" y="54" text-anchor="middle" font-size="9" fill="white" font-weight="bold">A</text>`
+  },
+  {
+    name:"Square Pyramidal", formula:"AX₅E₁", steric:6, bonding:5, lone:1,
+    angle:"~87°", polarity:"polar",
+    examples:"BrF₅, XeOF₄, [Ni(CN)₄]³⁻",
+    description:"Octahedral base with one axial lone pair; five atoms form a square pyramid.",
+    svgPath:`<line x1="60" y1="45" x2="20" y2="70" stroke="#3b82f6" stroke-width="2.5"/>
+      <line x1="60" y1="45" x2="100" y2="70" stroke="#3b82f6" stroke-width="2.5"/>
+      <line x1="60" y1="45" x2="60" y2="88" stroke="#3b82f6" stroke-width="3"/>
+      <line x1="60" y1="45" x2="35" y2="25" stroke="#3b82f6" stroke-width="1.5" stroke-dasharray="4,3"/>
+      <line x1="60" y1="45" x2="60" y2="10" stroke="#3b82f6" stroke-width="2.5"/>
+      <ellipse cx="84" cy="22" rx="8" ry="5" fill="#ef4444" opacity="0.8"/>
+      <circle cx="60" cy="45" r="13" fill="#94a3b8" stroke="none"/>
+      <circle cx="20" cy="70" r="9" fill="#22c55e" stroke="none"/>
+      <circle cx="100" cy="70" r="9" fill="#22c55e" stroke="none"/>
+      <circle cx="60" cy="88" r="9" fill="#22c55e" stroke="none"/>
+      <circle cx="35" cy="25" r="9" fill="#22c55e" opacity="0.6" stroke="none"/>
+      <circle cx="60" cy="10" r="9" fill="#22c55e" stroke="none"/>
+      <text x="60" y="49" text-anchor="middle" font-size="9" fill="white" font-weight="bold">A</text>`
+  },
+];
+
+function buildVSEPRPanel() {
+  const body = document.getElementById("vseprBody");
+  if (body.children.length > 0) return;
+
+  const cards = VSEPR_SHAPES.map(s => {
+    const polClass = s.polarity === 'polar' ? 'vsepr-polar' : s.polarity === 'nonpolar' ? 'vsepr-nonpolar' : 'vsepr-may';
+    const polLabel = s.polarity === 'polar' ? '⚡ Polar' : s.polarity === 'nonpolar' ? '○ Nonpolar' : '? May vary';
+    const lpDots = '●'.repeat(s.lone) || '—';
+    return `<div class="vsepr-card">
+      <div class="vsepr-shape-name">${s.name}</div>
+      <svg class="vsepr-svg" viewBox="0 0 120 100" xmlns="http://www.w3.org/2000/svg">${s.svgPath}</svg>
+      <div class="vsepr-formula">${s.formula}</div>
+      <div class="vsepr-detail-row">
+        <span class="vsepr-detail-label">Bonding pairs</span>
+        <span class="vsepr-detail-val">${s.bonding}</span>
+      </div>
+      <div class="vsepr-detail-row">
+        <span class="vsepr-detail-label">Lone pairs</span>
+        <span class="vsepr-detail-val" style="color:#ef4444;">${s.lone}</span>
+      </div>
+      <div class="vsepr-detail-row">
+        <span class="vsepr-detail-label">Steric number</span>
+        <span class="vsepr-steric">${s.steric}</span>
+      </div>
+      <div class="vsepr-angle">∠ ${s.angle}</div>
+      <span class="vsepr-polarity ${polClass}">${polLabel}</span>
+      ${s.polarityNote ? `<div style="font-size:0.62rem;color:var(--text-muted);">${s.polarityNote}</div>` : ''}
+      <div class="vsepr-examples">e.g. ${s.examples}</div>
+    </div>`;
+  }).join('');
+
+  body.innerHTML = `
+    <div style="font-size:0.78rem;color:var(--text-muted);margin-bottom:12px;line-height:1.6;
+      background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px 14px;">
+      <strong style="color:var(--accent);">VSEPR Theory:</strong>
+      Valence Shell Electron Pair Repulsion — electron pairs around a central atom arrange themselves
+      to minimise repulsion. Lone pairs repel more strongly than bonding pairs, compressing bond angles.
+      Steric number = bonding pairs + lone pairs.
+    </div>
+    <div class="vsepr-grid">${cards}</div>
+    <div style="font-size:0.66rem;color:var(--text-muted);margin-top:14px;font-style:italic;">
+      Legend: <span style="color:#94a3b8;">■</span> Central atom (A) &nbsp;
+      <span style="color:#22c55e;">■</span> Bonded atoms (X) &nbsp;
+      <span style="color:#ef4444;">■</span> Lone pairs (E) &nbsp;
+      Dashed bond = behind plane &nbsp; Thick bond = in front of plane
+    </div>`;
+}
+
+document.getElementById("btnVSEPR").addEventListener("click", () => {
+  buildVSEPRPanel();
+  openPanel("vseprOverlay");
+});
+document.getElementById("closeVSEPR").addEventListener("click", () => closePanel("vseprOverlay"));
+
+
+// ═══════════════════════════════════════════════════════════════════
+// ── FEATURE 4: EQUILIBRIUM CONSTANTS REFERENCE ────────────────────
+// ═══════════════════════════════════════════════════════════════════
+
+function buildEquilibriumPanel() {
+  const body = document.getElementById("equilibriumBody");
+  if (body.children.length > 0) return;
+
+  body.innerHTML = `
+  <div class="keq-section">
+    <div class="keq-section-title">⚖️ The Equilibrium Constant Expression</div>
+    <div class="keq-card">
+      <div class="keq-expression">For a reaction: &nbsp; <strong>aA + bB ⇌ cC + dD</strong></div>
+      <div class="keq-formula">Kc = [C]ᶜ[D]ᵈ / [A]ᵃ[B]ᵇ</div>
+      <div class="keq-desc" style="margin-top:8px;">
+        • Products over reactants — concentrations raised to their stoichiometric coefficients.<br>
+        • Pure solids and pure liquids are <strong>omitted</strong> from the expression (activity = 1).<br>
+        • Temperature is the only factor that changes Kc.<br>
+        • Units depend on the reaction; Kc is often reported as dimensionless.
+      </div>
+    </div>
+  </div>
+
+  <div class="keq-section">
+    <div class="keq-section-title">📐 Key Relationships</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+      <div class="keq-card">
+        <div class="keq-expression"><strong>Reverse reaction</strong></div>
+        <div class="keq-formula">K'c = 1 / Kc</div>
+        <div class="keq-desc">Reversing a reaction inverts the equilibrium constant.</div>
+      </div>
+      <div class="keq-card">
+        <div class="keq-expression"><strong>Multiply coefficients by n</strong></div>
+        <div class="keq-formula">K'c = Kc<sup>n</sup></div>
+        <div class="keq-desc">Scaling all coefficients raises K to that power.</div>
+      </div>
+      <div class="keq-card">
+        <div class="keq-expression"><strong>Add two reactions</strong></div>
+        <div class="keq-formula">K'c = K₁ × K₂</div>
+        <div class="keq-desc">Hess's Law equivalent for equilibrium constants.</div>
+      </div>
+      <div class="keq-card">
+        <div class="keq-expression"><strong>Reaction Quotient Q</strong></div>
+        <div class="keq-formula">Q = Kc → equilibrium</div>
+        <div class="keq-desc">Q &lt; Kc: shifts right &nbsp;|&nbsp; Q &gt; Kc: shifts left</div>
+      </div>
+      <div class="keq-card">
+        <div class="keq-expression"><strong>Relationship to ΔG°</strong></div>
+        <div class="keq-formula">ΔG° = −RT ln Kc</div>
+        <div class="keq-desc">R = 8.314 J/mol·K &nbsp; T in Kelvin</div>
+      </div>
+      <div class="keq-card">
+        <div class="keq-expression"><strong>Kp from Kc (gases)</strong></div>
+        <div class="keq-formula">Kp = Kc(RT)<sup>Δn</sup></div>
+        <div class="keq-desc">Δn = moles gaseous products − moles gaseous reactants</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="keq-section">
+    <div class="keq-section-title">🌡️ Le Chatelier's Principle — Shift Predictions</div>
+    <table class="keq-table">
+      <thead><tr>
+        <th>Stress Applied</th><th>System Response</th><th>Effect on Kc</th>
+      </tr></thead>
+      <tbody>
+        <tr><td>Add reactant</td><td>Shifts toward products (right)</td><td class="keq-val-col">No change</td></tr>
+        <tr><td>Remove reactant</td><td>Shifts toward reactants (left)</td><td class="keq-val-col">No change</td></tr>
+        <tr><td>Add product</td><td>Shifts toward reactants (left)</td><td class="keq-val-col">No change</td></tr>
+        <tr><td>Remove product</td><td>Shifts toward products (right)</td><td class="keq-val-col">No change</td></tr>
+        <tr><td>Increase pressure (compress)</td><td>Shifts toward fewer moles of gas</td><td class="keq-val-col">No change</td></tr>
+        <tr><td>Decrease pressure (expand)</td><td>Shifts toward more moles of gas</td><td class="keq-val-col">No change</td></tr>
+        <tr><td>Increase temperature (endothermic)</td><td>Shifts right (toward products)</td><td class="keq-val-col" style="color:#22c55e;">Increases</td></tr>
+        <tr><td>Increase temperature (exothermic)</td><td>Shifts left (toward reactants)</td><td class="keq-val-col" style="color:#ef4444;">Decreases</td></tr>
+        <tr><td>Add catalyst</td><td>Equilibrium reached faster</td><td class="keq-val-col">No change</td></tr>
+        <tr><td>Add inert gas (constant V)</td><td>No shift</td><td class="keq-val-col">No change</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="keq-section">
+    <div class="keq-section-title">📊 Selected Equilibrium Constants (25°C)</div>
+    <table class="keq-table">
+      <thead><tr>
+        <th>Reaction</th><th style="text-align:right">Kc</th><th style="text-align:right">Significance</th>
+      </tr></thead>
+      <tbody>
+        <tr class="thermo-section-head"><td colspan="3">Gas-Phase Equilibria</td></tr>
+        <tr><td class="keq-rxn">N₂(g) + 3H₂(g) ⇌ 2NH₃(g)</td><td class="keq-val-col">3.5 × 10⁸</td><td class="keq-val-col">Haber process</td></tr>
+        <tr><td class="keq-rxn">2SO₂(g) + O₂(g) ⇌ 2SO₃(g)</td><td class="keq-val-col">2.8 × 10¹²</td><td class="keq-val-col">Contact process</td></tr>
+        <tr><td class="keq-rxn">H₂(g) + I₂(g) ⇌ 2HI(g)</td><td class="keq-val-col">54.3</td><td class="keq-val-col">Classic example</td></tr>
+        <tr><td class="keq-rxn">N₂(g) + O₂(g) ⇌ 2NO(g)</td><td class="keq-val-col">4.8 × 10⁻³¹</td><td class="keq-val-col">Smog formation</td></tr>
+        <tr><td class="keq-rxn">2NO₂(g) ⇌ N₂O₄(g)</td><td class="keq-val-col">8.8</td><td class="keq-val-col">Brown/colourless demo</td></tr>
+        <tr class="thermo-section-head"><td colspan="3">Aqueous Acid-Base Equilibria</td></tr>
+        <tr><td class="keq-rxn">H₂O(l) ⇌ H⁺(aq) + OH⁻(aq)</td><td class="keq-val-col">Kw = 1.0 × 10⁻¹⁴</td><td class="keq-val-col">Water autoionisation</td></tr>
+        <tr><td class="keq-rxn">CH₃COOH ⇌ H⁺ + CH₃COO⁻</td><td class="keq-val-col">Ka = 1.8 × 10⁻⁵</td><td class="keq-val-col">Acetic acid</td></tr>
+        <tr><td class="keq-rxn">NH₃ + H₂O ⇌ NH₄⁺ + OH⁻</td><td class="keq-val-col">Kb = 1.8 × 10⁻⁵</td><td class="keq-val-col">Ammonia (base)</td></tr>
+        <tr class="thermo-section-head"><td colspan="3">Interpreting Kc Values</td></tr>
+        <tr><td>Kc ≫ 1 (e.g. &gt; 10³)</td><td class="keq-val-col" style="color:#22c55e;">Products favoured</td><td class="keq-val-col">Near-complete reaction</td></tr>
+        <tr><td>Kc ≈ 1</td><td class="keq-val-col" style="color:#eab308;">Neither favoured</td><td class="keq-val-col">Significant both sides</td></tr>
+        <tr><td>Kc ≪ 1 (e.g. &lt; 10⁻³)</td><td class="keq-val-col" style="color:#ef4444;">Reactants favoured</td><td class="keq-val-col">Barely proceeds</td></tr>
+      </tbody>
+    </table>
+  </div>`;
+}
+
+document.getElementById("btnEquilibrium").addEventListener("click", () => {
+  buildEquilibriumPanel();
+  openPanel("equilibriumOverlay");
+});
+document.getElementById("closeEquilibrium").addEventListener("click", () => closePanel("equilibriumOverlay"));
+
+
+// ═══════════════════════════════════════════════════════════════════
+// ── FEATURE 5: ELECTROCHEMICAL CELLS REFERENCE ────────────────────
+// ═══════════════════════════════════════════════════════════════════
+
+function buildElectrochemPanel() {
+  const body = document.getElementById("electrochemBody");
+  if (body.children.length > 0) return;
+
+  body.innerHTML = `
+  <div class="ec2-section">
+    <div class="ec2-section-title">⚡ Core Formulas</div>
+    <div class="ec2-formula-grid">
+      <div class="ec2-formula-card">
+        <div class="ef-label">Cell Voltage (Standard)</div>
+        <div class="ef-eq">E°cell = E°cathode − E°anode</div>
+        <div class="ef-desc">Use standard reduction potentials from the E° table.
+          Cathode = reduction (more positive E°). Anode = oxidation (more negative E°).</div>
+      </div>
+      <div class="ec2-formula-card">
+        <div class="ef-label">Relationship to Free Energy</div>
+        <div class="ef-eq">ΔG° = −nFE°cell</div>
+        <div class="ef-desc">n = moles of electrons transferred<br>
+          F = 96 485 C/mol (Faraday's constant)<br>
+          ΔG° negative → spontaneous (galvanic)</div>
+      </div>
+      <div class="ec2-formula-card">
+        <div class="ef-label">Relationship to Equilibrium</div>
+        <div class="ef-eq">ln K = nFE°cell / RT</div>
+        <div class="ef-desc">At 25°C: log K = nE°cell / 0.0592<br>
+          Large positive E°cell → large K → spontaneous</div>
+      </div>
+      <div class="ec2-formula-card">
+        <div class="ef-label">Nernst Equation (non-standard)</div>
+        <div class="ef-eq">E = E° − (RT/nF) ln Q</div>
+        <div class="ef-desc">At 25°C: E = E° − (0.0592/n) log Q<br>
+          Q = reaction quotient at actual concentrations</div>
+      </div>
+      <div class="ec2-formula-card">
+        <div class="ef-label">Faraday's Law (electrolysis)</div>
+        <div class="ef-eq">m = (M × I × t) / (n × F)</div>
+        <div class="ef-desc">m = mass deposited (g), M = molar mass,<br>
+          I = current (A), t = time (s), n = electrons</div>
+      </div>
+      <div class="ec2-formula-card">
+        <div class="ef-label">Charge &amp; Current</div>
+        <div class="ef-eq">Q = I × t &nbsp;|&nbsp; P = IV</div>
+        <div class="ef-desc">Q = charge (coulombs), I = current (amps),<br>t = time (seconds)</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="ec2-section">
+    <div class="ec2-section-title">🔋 Galvanic vs Electrolytic Cells</div>
+    <div class="ec2-cell-diagram">
+      <div class="ec2-cell-box">
+        <div class="ec2-cell-title">⚡ Galvanic (Voltaic) Cell</div>
+        <svg class="ec2-cell-svg" viewBox="0 0 280 200" xmlns="http://www.w3.org/2000/svg">
+          <!-- Beakers -->
+          <rect x="20" y="60" width="90" height="110" rx="4" fill="none" stroke="#3b82f6" stroke-width="1.5"/>
+          <rect x="170" y="60" width="90" height="110" rx="4" fill="none" stroke="#22c55e" stroke-width="1.5"/>
+          <!-- Solution fill -->
+          <rect x="21" y="100" width="88" height="69" rx="2" fill="rgba(59,130,246,0.1)"/>
+          <rect x="171" y="100" width="88" height="69" rx="2" fill="rgba(34,197,94,0.1)"/>
+          <!-- Salt bridge -->
+          <rect x="105" y="75" width="70" height="20" rx="10" fill="none" stroke="#eab308" stroke-width="1.5" stroke-dasharray="4,2"/>
+          <text x="140" y="89" text-anchor="middle" font-size="8" fill="#eab308">Salt Bridge</text>
+          <!-- Electrodes -->
+          <rect x="55" y="55" width="10" height="80" rx="2" fill="#ef4444"/>
+          <rect x="215" y="55" width="10" height="80" rx="2" fill="#22c55e"/>
+          <!-- Wire -->
+          <line x1="60" y1="55" x2="60" y2="30" stroke="#94a3b8" stroke-width="2"/>
+          <line x1="60" y1="30" x2="220" y2="30" stroke="#94a3b8" stroke-width="2"/>
+          <line x1="220" y1="30" x2="220" y2="55" stroke="#94a3b8" stroke-width="2"/>
+          <!-- Voltmeter -->
+          <circle cx="140" cy="30" r="14" fill="var(--surface2)" stroke="#94a3b8" stroke-width="1.5"/>
+          <text x="140" y="34" text-anchor="middle" font-size="9" fill="var(--text)" font-weight="bold">V</text>
+          <!-- Electron flow arrow -->
+          <text x="100" y="25" text-anchor="middle" font-size="8" fill="#94a3b8">e⁻ →</text>
+          <!-- Labels -->
+          <text x="60" y="48" text-anchor="middle" font-size="9" fill="#ef4444" font-weight="bold">Anode (−)</text>
+          <text x="220" y="48" text-anchor="middle" font-size="9" fill="#22c55e" font-weight="bold">Cathode (+)</text>
+          <text x="65" y="125" text-anchor="middle" font-size="8" fill="#3b82f6">oxidation</text>
+          <text x="215" y="125" text-anchor="middle" font-size="8" fill="#22c55e">reduction</text>
+        </svg>
+        <div class="ec2-half-reactions">
+          <div class="ec2-half anode">Anode: Metal → Metal²⁺ + 2e⁻ (oxidation)</div>
+          <div class="ec2-half cathode">Cathode: Metal²⁺ + 2e⁻ → Metal (reduction)</div>
+        </div>
+        <div class="ec2-cell-desc">
+          Spontaneous reaction (ΔG° &lt; 0, E°cell &gt; 0). Converts chemical energy → electrical energy.
+          Electrons flow from anode to cathode through external circuit.
+        </div>
+      </div>
+
+      <div class="ec2-cell-box">
+        <div class="ec2-cell-title">🔌 Electrolytic Cell</div>
+        <svg class="ec2-cell-svg" viewBox="0 0 280 200" xmlns="http://www.w3.org/2000/svg">
+          <!-- Single beaker -->
+          <rect x="60" y="60" width="160" height="120" rx="4" fill="none" stroke="#94a3b8" stroke-width="1.5"/>
+          <rect x="61" y="110" width="158" height="69" rx="2" fill="rgba(139,92,246,0.1)"/>
+          <!-- Battery -->
+          <rect x="100" y="15" width="80" height="25" rx="4" fill="var(--surface2)" stroke="#eab308" stroke-width="1.5"/>
+          <text x="140" y="31" text-anchor="middle" font-size="9" fill="#eab308" font-weight="bold">Battery (+) (−)</text>
+          <!-- Electrodes -->
+          <rect x="90" y="55" width="10" height="85" rx="2" fill="#ef4444"/>
+          <rect x="180" y="55" width="10" height="85" rx="2" fill="#22c55e"/>
+          <!-- Wires -->
+          <line x1="95" y1="55" x2="95" y2="40" stroke="#ef4444" stroke-width="2"/>
+          <line x1="95" y1="40" x2="100" y2="40" stroke="#ef4444" stroke-width="2"/>
+          <line x1="185" y1="55" x2="185" y2="40" stroke="#22c55e" stroke-width="2"/>
+          <line x1="185" y1="40" x2="180" y2="40" stroke="#22c55e" stroke-width="2"/>
+          <!-- Electron flow (opposite!) -->
+          <text x="140" y="10" text-anchor="middle" font-size="8" fill="#94a3b8">← e⁻</text>
+          <!-- Labels -->
+          <text x="95" y="48" text-anchor="middle" font-size="9" fill="#ef4444" font-weight="bold">Anode (+)</text>
+          <text x="185" y="48" text-anchor="middle" font-size="9" fill="#22c55e" font-weight="bold">Cathode (−)</text>
+          <text x="95" y="130" text-anchor="middle" font-size="8" fill="#ef4444">oxidation</text>
+          <text x="185" y="130" text-anchor="middle" font-size="8" fill="#22c55e">reduction</text>
+          <text x="140" y="155" text-anchor="middle" font-size="8" fill="#8b5cf6">electrolyte solution</text>
+        </svg>
+        <div class="ec2-half-reactions">
+          <div class="ec2-half anode">Anode (+): Anions → oxidised product + e⁻</div>
+          <div class="ec2-half cathode">Cathode (−): Cations + e⁻ → reduced product</div>
+        </div>
+        <div class="ec2-cell-desc">
+          Non-spontaneous (ΔG° &gt; 0, E°cell &lt; 0). External power drives the reaction.
+          Used in electroplating, Hall–Héroult process (Al), chlor-alkali process (Cl₂/NaOH).
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="ec2-section">
+    <div class="ec2-section-title">📋 Key Comparison: Galvanic vs Electrolytic</div>
+    <table class="keq-table">
+      <thead><tr><th>Feature</th><th>Galvanic Cell</th><th>Electrolytic Cell</th></tr></thead>
+      <tbody>
+        <tr><td>Spontaneity</td><td>Spontaneous (ΔG° &lt; 0)</td><td>Non-spontaneous (ΔG° &gt; 0)</td></tr>
+        <tr><td>E°cell</td><td style="color:#22c55e;">Positive (&gt; 0)</td><td style="color:#ef4444;">Negative (&lt; 0)</td></tr>
+        <tr><td>Anode sign</td><td>Negative (−)</td><td>Positive (+)</td></tr>
+        <tr><td>Cathode sign</td><td>Positive (+)</td><td>Negative (−)</td></tr>
+        <tr><td>Energy conversion</td><td>Chemical → Electrical</td><td>Electrical → Chemical</td></tr>
+        <tr><td>Electron flow</td><td>Anode → Cathode (ext.)</td><td>Cathode → Anode (ext.)</td></tr>
+        <tr><td>Common examples</td><td>Batteries, fuel cells</td><td>Electroplating, refining</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="ec2-sign-convention">
+    <strong>🔑 Memory Aid:</strong> &nbsp;
+    <strong>AN OX / RED CAT</strong> — <em>An</em>ode = <em>Ox</em>idation, <em>Red</em>uction at <em>Cat</em>hode (both cell types). &nbsp;|&nbsp;
+    <strong>Galvanic:</strong> anode (−), cathode (+). &nbsp;
+    <strong>Electrolytic:</strong> anode (+), cathode (−).
+  </div>`;
+}
+
+document.getElementById("btnElectrochem").addEventListener("click", () => {
+  buildElectrochemPanel();
+  openPanel("electrochemOverlay");
+});
+document.getElementById("closeElectrochem").addEventListener("click", () => closePanel("electrochemOverlay"));
+
+
+// ═══════════════════════════════════════════════════════════════════
+// ── FEATURE 6: ORGANIC FUNCTIONAL GROUPS ──────────────────────────
+// ═══════════════════════════════════════════════════════════════════
+
+const ORGANIC_GROUPS = [
+  {
+    name:"Alkane", suffix:"-ane", prefix:"",
+    formula:"CₙH₂ₙ₊₂", functional:"C−C single bonds only",
+    badge:"Saturated", badgeColor:"#94a3b8",
+    description:"Fully saturated hydrocarbons. Nonpolar, low reactivity. Combust in O₂.",
+    examples:"methane (CH₄), ethane (C₂H₆), propane (C₃H₈), butane (C₄H₁₀)",
+    namingTip:"Count carbons: 1=meth, 2=eth, 3=prop, 4=but, 5=pent, 6=hex + -ane",
+    svgContent:`<text x="10" y="45" font-size="11" fill="#94a3b8">H₃C</text>
+      <line x1="50" y1="40" x2="80" y2="40" stroke="#94a3b8" stroke-width="2"/>
+      <text x="82" y="45" font-size="11" fill="#94a3b8">CH₂</text>
+      <line x1="115" y1="40" x2="145" y2="40" stroke="#94a3b8" stroke-width="2"/>
+      <text x="147" y="45" font-size="11" fill="#94a3b8">CH₃</text>`
+  },
+  {
+    name:"Alkene", suffix:"-ene", prefix:"",
+    formula:"CₙH₂ₙ", functional:"C=C double bond",
+    badge:"Unsaturated", badgeColor:"#22c55e",
+    description:"One C=C double bond. More reactive than alkanes — addition reactions.",
+    examples:"ethene (CH₂=CH₂), propene, but-1-ene, but-2-ene",
+    namingTip:"Number chain from end nearest double bond; indicate position: but-2-ene",
+    svgContent:`<text x="5" y="45" font-size="11" fill="#22c55e">H₂C</text>
+      <line x1="42" y1="37" x2="75" y2="37" stroke="#22c55e" stroke-width="2"/>
+      <line x1="42" y1="43" x2="75" y2="43" stroke="#22c55e" stroke-width="2"/>
+      <text x="77" y="45" font-size="11" fill="#22c55e">CH₂</text>`
+  },
+  {
+    name:"Alkyne", suffix:"-yne", prefix:"",
+    formula:"CₙH₂ₙ₋₂", functional:"C≡C triple bond",
+    badge:"Unsaturated", badgeColor:"#3b82f6",
+    description:"One C≡C triple bond. High reactivity — addition reactions with H₂, HX, X₂.",
+    examples:"ethyne/acetylene (HC≡CH), propyne, but-1-yne",
+    namingTip:"Longest chain containing triple bond; lowest possible position number",
+    svgContent:`<text x="5" y="45" font-size="11" fill="#3b82f6">HC</text>
+      <line x1="30" y1="35" x2="75" y2="35" stroke="#3b82f6" stroke-width="2"/>
+      <line x1="30" y1="40" x2="75" y2="40" stroke="#3b82f6" stroke-width="2"/>
+      <line x1="30" y1="45" x2="75" y2="45" stroke="#3b82f6" stroke-width="2"/>
+      <text x="77" y="45" font-size="11" fill="#3b82f6">CH</text>`
+  },
+  {
+    name:"Alcohol", suffix:"-ol", prefix:"hydroxy-",
+    formula:"R−OH", functional:"−OH (hydroxyl)",
+    badge:"Oxygen group", badgeColor:"#ef4444",
+    description:"−OH group. Polar, H-bonding → higher bp. Soluble in water for shorter chains.",
+    examples:"methanol (CH₃OH), ethanol (C₂H₅OH), propan-1-ol, propan-2-ol",
+    namingTip:"Number chain so −OH gets lowest number; add -ol suffix",
+    svgContent:`<text x="5" y="45" font-size="11" fill="#94a3b8">R</text>
+      <line x1="22" y1="40" x2="55" y2="40" stroke="#94a3b8" stroke-width="2"/>
+      <circle cx="68" cy="40" r="12" fill="rgba(239,68,68,0.2)" stroke="#ef4444" stroke-width="1.5"/>
+      <text x="68" y="44" text-anchor="middle" font-size="10" fill="#ef4444" font-weight="bold">O</text>
+      <line x1="80" y1="40" x2="105" y2="40" stroke="#ef4444" stroke-width="2"/>
+      <text x="107" y="44" font-size="10" fill="#ef4444">H</text>`
+  },
+  {
+    name:"Aldehyde", suffix:"-al", prefix:"formyl-",
+    formula:"R−CHO", functional:"−CHO (carbonyl at end)",
+    badge:"Carbonyl group", badgeColor:"#f97316",
+    description:"Carbonyl C at chain end with one H. Polar. Can be oxidised to carboxylic acid.",
+    examples:"methanal/formaldehyde (HCHO), ethanal (CH₃CHO), propanal",
+    namingTip:"Always at carbon-1. Use -al suffix; no position number needed.",
+    svgContent:`<text x="5" y="45" font-size="11" fill="#94a3b8">R</text>
+      <line x1="22" y1="40" x2="55" y2="40" stroke="#94a3b8" stroke-width="2"/>
+      <circle cx="70" cy="40" r="13" fill="rgba(249,115,22,0.2)" stroke="#f97316" stroke-width="1.5"/>
+      <text x="70" y="44" text-anchor="middle" font-size="10" fill="#f97316" font-weight="bold">C</text>
+      <line x1="70" y1="27" x2="70" y2="15" stroke="#f97316" stroke-width="2"/>
+      <text x="70" y="13" text-anchor="middle" font-size="10" fill="#f97316">O</text>
+      <line x1="83" y1="40" x2="105" y2="40" stroke="#f97316" stroke-width="2"/>
+      <text x="107" y="44" font-size="10" fill="#f97316">H</text>`
+  },
+  {
+    name:"Ketone", suffix:"-one", prefix:"oxo-",
+    formula:"R−CO−R'", functional:"C=O (carbonyl in chain)",
+    badge:"Carbonyl group", badgeColor:"#f97316",
+    description:"Carbonyl C bonded to two carbon groups. Cannot be easily oxidised further.",
+    examples:"propanone/acetone (CH₃COCH₃), butanone (MEK)",
+    namingTip:"Number chain; give C=O lowest possible number: pentan-2-one",
+    svgContent:`<text x="5" y="45" font-size="11" fill="#94a3b8">R</text>
+      <line x1="22" y1="40" x2="52" y2="40" stroke="#94a3b8" stroke-width="2"/>
+      <circle cx="65" cy="40" r="13" fill="rgba(249,115,22,0.2)" stroke="#f97316" stroke-width="1.5"/>
+      <text x="65" y="44" text-anchor="middle" font-size="10" fill="#f97316" font-weight="bold">C</text>
+      <line x1="65" y1="27" x2="65" y2="15" stroke="#f97316" stroke-width="2"/>
+      <text x="65" y="13" text-anchor="middle" font-size="10" fill="#f97316">O</text>
+      <line x1="78" y1="40" x2="108" y2="40" stroke="#94a3b8" stroke-width="2"/>
+      <text x="110" y="44" font-size="11" fill="#94a3b8">R'</text>`
+  },
+  {
+    name:"Carboxylic Acid", suffix:"-oic acid", prefix:"carboxy-",
+    formula:"R−COOH", functional:"−COOH (carboxyl)",
+    badge:"Acidic", badgeColor:"#ef4444",
+    description:"Acidic −COOH group. Weak acid; H-bonding gives high bp; forms esters/amides.",
+    examples:"methanoic acid (HCOOH), ethanoic/acetic acid (CH₃COOH), propanoic acid",
+    namingTip:"Always at C-1; chain includes the COOH carbon: propanoic = 3C total",
+    svgContent:`<text x="5" y="45" font-size="11" fill="#94a3b8">R</text>
+      <line x1="22" y1="40" x2="52" y2="40" stroke="#94a3b8" stroke-width="2"/>
+      <circle cx="65" cy="40" r="13" fill="rgba(239,68,68,0.15)" stroke="#ef4444" stroke-width="1.5"/>
+      <text x="65" y="44" text-anchor="middle" font-size="10" fill="#ef4444" font-weight="bold">C</text>
+      <line x1="65" y1="27" x2="65" y2="15" stroke="#ef4444" stroke-width="2"/>
+      <text x="65" y="13" text-anchor="middle" font-size="10" fill="#ef4444">O</text>
+      <line x1="78" y1="40" x2="100" y2="40" stroke="#ef4444" stroke-width="2"/>
+      <circle cx="113" cy="40" r="11" fill="rgba(239,68,68,0.2)" stroke="#ef4444" stroke-width="1.5"/>
+      <text x="113" y="44" text-anchor="middle" font-size="9" fill="#ef4444">OH</text>`
+  },
+  {
+    name:"Amine", suffix:"-amine", prefix:"amino-",
+    formula:"R−NH₂", functional:"−NH₂ (amino)",
+    badge:"Basic/N group", badgeColor:"#8b5cf6",
+    description:"Basic (accept protons). Lone pair on N. Lower bp than alcohols but higher than alkanes.",
+    examples:"methylamine (CH₃NH₂), ethylamine, aniline (C₆H₅NH₂)",
+    namingTip:"Primary: R-NH₂; Secondary: R-NH-R'; Tertiary: R₃N. Name with -amine suffix.",
+    svgContent:`<text x="5" y="45" font-size="11" fill="#94a3b8">R</text>
+      <line x1="22" y1="40" x2="55" y2="40" stroke="#94a3b8" stroke-width="2"/>
+      <circle cx="70" cy="40" r="13" fill="rgba(139,92,246,0.2)" stroke="#8b5cf6" stroke-width="1.5"/>
+      <text x="70" y="44" text-anchor="middle" font-size="10" fill="#8b5cf6" font-weight="bold">N</text>
+      <line x1="70" y1="27" x2="55" y2="15" stroke="#8b5cf6" stroke-width="1.5"/>
+      <text x="52" y="13" font-size="9" fill="#8b5cf6">H</text>
+      <line x1="70" y1="27" x2="85" y2="15" stroke="#8b5cf6" stroke-width="1.5"/>
+      <text x="83" y="13" font-size="9" fill="#8b5cf6">H</text>`
+  },
+  {
+    name:"Ester", suffix:"-oate", prefix:"",
+    formula:"R−COO−R'", functional:"−COO− (ester linkage)",
+    badge:"Ether-like", badgeColor:"#14b8a6",
+    description:"Formed by acid + alcohol condensation (esterification). Fruity aromas. Hydrolysable.",
+    examples:"methyl ethanoate (CH₃COOCH₃), ethyl ethanoate (nail polish remover)",
+    namingTip:"Alkyl (from alcohol) + name of acid as -oate: ethyl ethanoate = ethanol + ethanoic acid",
+    svgContent:`<text x="5" y="45" font-size="11" fill="#94a3b8">R</text>
+      <line x1="22" y1="40" x2="48" y2="40" stroke="#94a3b8" stroke-width="2"/>
+      <circle cx="60" cy="40" r="11" fill="rgba(20,184,166,0.15)" stroke="#14b8a6" stroke-width="1.5"/>
+      <text x="60" y="44" text-anchor="middle" font-size="9" fill="#14b8a6" font-weight="bold">C</text>
+      <line x1="60" y1="29" x2="60" y2="17" stroke="#14b8a6" stroke-width="2"/>
+      <text x="60" y="15" text-anchor="middle" font-size="9" fill="#14b8a6">O</text>
+      <line x1="71" y1="40" x2="92" y2="40" stroke="#14b8a6" stroke-width="2"/>
+      <circle cx="104" cy="40" r="11" fill="rgba(20,184,166,0.15)" stroke="#14b8a6" stroke-width="1.5"/>
+      <text x="104" y="44" text-anchor="middle" font-size="9" fill="#14b8a6">O</text>
+      <line x1="115" y1="40" x2="135" y2="40" stroke="#94a3b8" stroke-width="2"/>
+      <text x="137" y="44" font-size="11" fill="#94a3b8">R'</text>`
+  },
+  {
+    name:"Ether", suffix:"", prefix:"",
+    formula:"R−O−R'", functional:"C−O−C linkage",
+    badge:"Weakly polar", badgeColor:"#eab308",
+    description:"Low reactivity. Diethyl ether is a historic anaesthetic. Good organic solvent.",
+    examples:"methoxymethane (dimethyl ether), ethoxyethane (diethyl ether)",
+    namingTip:"IUPAC: alkoxy- prefix on longest chain. Common: list both alkyl groups + ether",
+    svgContent:`<text x="5" y="45" font-size="11" fill="#94a3b8">R</text>
+      <line x1="22" y1="40" x2="52" y2="40" stroke="#94a3b8" stroke-width="2"/>
+      <circle cx="66" cy="40" r="13" fill="rgba(234,179,8,0.2)" stroke="#eab308" stroke-width="1.5"/>
+      <text x="66" y="44" text-anchor="middle" font-size="10" fill="#eab308" font-weight="bold">O</text>
+      <line x1="79" y1="40" x2="108" y2="40" stroke="#94a3b8" stroke-width="2"/>
+      <text x="110" y="44" font-size="11" fill="#94a3b8">R'</text>`
+  },
+];
+
+function buildOrganicPanel() {
+  const body = document.getElementById("organicBody");
+  if (body.children.length > 0) return;
+
+  const cards = ORGANIC_GROUPS.map(g => `
+    <div class="org-card">
+      <div class="org-card-header">
+        <div class="org-class-name">${g.name}</div>
+        <span class="org-badge" style="background:color-mix(in srgb,${g.badgeColor} 20%,var(--surface2));
+          color:${g.badgeColor};border:1px solid ${g.badgeColor};">${g.badge}</span>
+      </div>
+      <svg class="org-svg" viewBox="0 0 200 65" xmlns="http://www.w3.org/2000/svg">${g.svgContent}</svg>
+      <div class="org-formula">Formula: ${g.formula} &nbsp;|&nbsp; Suffix: ${g.suffix || 'varies'}</div>
+      <div class="org-name-rules"><strong>Functional group:</strong> ${g.functional}</div>
+      <div class="org-name-rules" style="margin-top:3px;"><strong>Naming:</strong> ${g.namingTip}</div>
+      <div class="org-example">e.g. ${g.examples}</div>
+      <div style="font-size:0.7rem;color:var(--text-muted);margin-top:4px;">${g.description}</div>
+    </div>`).join('');
+
+  // Alkane homologous series table
+  const alkanes = [
+    {n:1,name:"Methane",   f:"CH₄"},
+    {n:2,name:"Ethane",    f:"C₂H₆"},
+    {n:3,name:"Propane",   f:"C₃H₈"},
+    {n:4,name:"Butane",    f:"C₄H₁₀"},
+    {n:5,name:"Pentane",   f:"C₅H₁₂"},
+    {n:6,name:"Hexane",    f:"C₆H₁₄"},
+    {n:7,name:"Heptane",   f:"C₇H₁₆"},
+    {n:8,name:"Octane",    f:"C₈H₁₈"},
+  ];
+
+  const alkaneRows = alkanes.map(a =>
+    `<tr><td>${a.n}</td><td>${a.name}</td><td style="font-family:'Space Mono',monospace">${a.f}</td></tr>`).join('');
+
+  const prefixes = [
+    ["1","meth-"],["2","eth-"],["3","prop-"],["4","but-"],
+    ["5","pent-"],["6","hex-"],["7","hept-"],["8","oct-"],["9","non-"],["10","dec-"]
+  ];
+  const prefixRows = prefixes.map(([n,p]) =>
+    `<tr><td>${n}</td><td style="font-family:'Space Mono',monospace;color:var(--accent)">${p}</td></tr>`).join('');
+
+  body.innerHTML = `
+    <div style="display:grid;grid-template-columns:1fr auto auto;gap:12px;align-items:start;">
+      <div class="org-grid">${cards}</div>
+      <div style="min-width:160px;">
+        <div class="org-homologous">
+          <div class="org-homo-title">Carbon Prefixes</div>
+          <table class="org-homo-table">
+            <thead><tr><th>C atoms</th><th>Prefix</th></tr></thead>
+            <tbody>${prefixRows}</tbody>
+          </table>
+        </div>
+        <div class="org-homologous" style="margin-top:14px;">
+          <div class="org-homo-title">Alkane Series</div>
+          <table class="org-homo-table">
+            <thead><tr><th>n</th><th>Name</th><th>Formula</th></tr></thead>
+            <tbody>${alkaneRows}</tbody>
+          </table>
+        </div>
+      </div>
+    </div>`;
+}
+
+document.getElementById("btnOrganic").addEventListener("click", () => {
+  buildOrganicPanel();
+  openPanel("organicOverlay");
+});
+document.getElementById("closeOrganic").addEventListener("click", () => closePanel("organicOverlay"));
+
+
+// ═══════════════════════════════════════════════════════════════════
+// ── FEATURE 7: MOLAR MASS CALCULATOR ──────────────────────────────
+// ═══════════════════════════════════════════════════════════════════
+
+let mmFormula = [];   // [{sym, mass, count}]
+let mmHistory = [];
+
+function buildMolarMassPanel() {
+  const body = document.getElementById("molarMassBody");
+  if (body.children.length > 0) return;
+
+  // Build compact periodic table grid
+  const posMap = {};
+  ELEMENTS.forEach(el => { posMap[`${el.row},${el.col}`] = el; });
+
+  let ptHTML = `<div class="mm-pt-grid">`;
+  for (let r = 1; r <= 9; r++) {
+    if (r === 8) {
+      ptHTML += `<div style="grid-column:1/-1;height:3px;"></div>`;
+      continue;
+    }
+    for (let c = 1; c <= 18; c++) {
+      if ((r === 6 || r === 7) && c >= 4 && c <= 17) {
+        if (c === 4) {
+          ptHTML += `<div style="grid-row:${r};grid-column:4/18;border:1px dashed var(--border);
+            border-radius:3px;display:flex;align-items:center;justify-content:center;
+            font-size:0.32rem;color:var(--text-muted);font-weight:700;">
+            ${r===6?"Lanthanides":"Actinides"}</div>`;
+        }
+        continue;
+      }
+      const el = posMap[`${r},${c}`];
+      if (!el) {
+        ptHTML += `<div style="grid-row:${r};grid-column:${c};aspect-ratio:1;"></div>`;
+        continue;
+      }
+      ptHTML += `<div class="mm-el ${el.cat}" 
+        style="grid-row:${el.row};grid-column:${el.col};"
+        data-sym="${el.sym}" data-mass="${el.mass}" title="${el.name} (${el.mass} g/mol)">
+        <div class="mm-z">${el.z}</div>
+        <div class="mm-sym">${el.sym}</div>
+      </div>`;
+    }
+  }
+  ptHTML += `</div>`;
+
+  body.innerHTML = `
+    <div class="mm-layout">
+      <div style="font-size:0.72rem;color:var(--text-muted);margin-bottom:6px;">
+        Click elements on the periodic table to build a compound formula. Click an element multiple times to add more atoms.
+      </div>
+      ${ptHTML}
+      <div class="mm-display">
+        <div class="mm-formula-row">
+          <div class="mm-formula-display" id="mmFormulaDisplay">—</div>
+          <div class="mm-result">
+            <div class="mm-result-value" id="mmResultValue">0.000</div>
+            <div class="mm-result-unit">g/mol</div>
+          </div>
+        </div>
+        <div class="mm-controls">
+          <button class="mm-btn" id="mmUndo">↩ Undo</button>
+          <button class="mm-btn danger" id="mmClear">✕ Clear</button>
+          <button class="mm-btn" id="mmSave">💾 Save to History</button>
+        </div>
+        <div class="mm-breakdown" id="mmBreakdown"></div>
+      </div>
+      <div class="mm-history" id="mmHistorySection" style="display:none;">
+        <div class="mm-history-title">📋 Calculation History (click to reload)</div>
+        <div id="mmHistoryList"></div>
+      </div>
+    </div>`;
+
+  // Wire element clicks
+  body.querySelectorAll('.mm-el').forEach(cell => {
+    cell.addEventListener('click', () => {
+      const sym = cell.dataset.sym;
+      const mass = parseFloat(cell.dataset.mass);
+      const existing = mmFormula.find(e => e.sym === sym);
+      if (existing) existing.count++;
+      else mmFormula.push({sym, mass, count:1});
+      updateMMDisplay();
+    });
+  });
+
+  document.getElementById('mmUndo').addEventListener('click', () => {
+    if (mmFormula.length === 0) return;
+    const last = mmFormula[mmFormula.length - 1];
+    if (last.count > 1) last.count--;
+    else mmFormula.pop();
+    updateMMDisplay();
+  });
+
+  document.getElementById('mmClear').addEventListener('click', () => {
+    mmFormula = [];
+    updateMMDisplay();
+  });
+
+  document.getElementById('mmSave').addEventListener('click', () => {
+    if (mmFormula.length === 0) return;
+    const formulaStr = buildFormulaString();
+    const total = mmFormula.reduce((s,e) => s + e.mass * e.count, 0);
+    mmHistory.unshift({formula: formulaStr, mass: total.toFixed(3), items: [...mmFormula.map(e=>({...e}))]});
+    if (mmHistory.length > 10) mmHistory.pop();
+    updateMMHistory();
+  });
+}
+
+function buildFormulaString() {
+  return mmFormula.map(e => {
+    const sub = ['','','₂','₃','₄','₅','₆','₇','₈','₉','₁₀'];
+    return e.sym + (e.count > 1 ? (sub[e.count] || e.count.toString()) : '');
+  }).join('');
+}
+
+function updateMMDisplay() {
+  const formulaStr = mmFormula.length > 0 ? buildFormulaString() : '—';
+  const total = mmFormula.reduce((s,e) => s + e.mass * e.count, 0);
+
+  document.getElementById('mmFormulaDisplay').textContent = formulaStr;
+  document.getElementById('mmResultValue').textContent = total > 0 ? total.toFixed(3) : '0.000';
+
+  const breakdown = document.getElementById('mmBreakdown');
+  if (mmFormula.length === 0) {
+    breakdown.innerHTML = '';
+    return;
+  }
+  breakdown.innerHTML = mmFormula.map(e => {
+    const sub = ['','','₂','₃','₄','₅','₆','₇','₈','₉','₁₀'];
+    const subScript = e.count > 1 ? (sub[e.count] || `×${e.count}`) : '';
+    const contrib = (e.mass * e.count).toFixed(3);
+    return `<div class="mm-breakdown-item">
+      <span class="mm-breakdown-sym">${e.sym}${subScript}</span>
+      <span class="mm-breakdown-math">${e.count} × ${e.mass.toFixed(3)}</span>
+      <span class="mm-breakdown-mass">${contrib} g/mol</span>
+    </div>`;
+  }).join('') + (mmFormula.length > 1 ? `<div class="mm-breakdown-item" style="font-weight:700;border-top:2px solid var(--border);margin-top:3px;">
+    <span class="mm-breakdown-sym" style="color:var(--accent)">Total</span>
+    <span></span>
+    <span class="mm-breakdown-mass" style="color:var(--accent);font-size:0.85rem;">${total.toFixed(3)} g/mol</span>
+  </div>` : '');
+}
+
+function updateMMHistory() {
+  const section = document.getElementById('mmHistorySection');
+  const list = document.getElementById('mmHistoryList');
+  if (mmHistory.length === 0) { section.style.display = 'none'; return; }
+  section.style.display = '';
+  list.innerHTML = mmHistory.map((h,i) =>
+    `<div class="mm-history-item" data-idx="${i}">
+      <span style="font-family:'Space Mono',monospace;font-weight:700;">${h.formula}</span>
+      <span style="color:var(--accent);font-family:'Space Mono',monospace;">${h.mass} g/mol</span>
+    </div>`).join('');
+  list.querySelectorAll('.mm-history-item').forEach(item => {
+    item.addEventListener('click', () => {
+      const entry = mmHistory[parseInt(item.dataset.idx)];
+      mmFormula = entry.items.map(e=>({...e}));
+      updateMMDisplay();
+    });
+  });
+}
+
+document.getElementById("btnMolarMass").addEventListener("click", () => {
+  buildMolarMassPanel();
+  openPanel("molarMassOverlay");
+});
+document.getElementById("closeMolarMass").addEventListener("click", () => closePanel("molarMassOverlay"));
+
+
+// ═══════════════════════════════════════════════════════════════════
+// ── FEATURE 8: THERMOCHEMICAL DATA ────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════
+// ΔHf° in kJ/mol, S° in J/mol·K, ΔGf° in kJ/mol at 25°C, 1 atm
+// Source: NIST WebBook / Atkins Physical Chemistry 10th ed.
+
+const THERMO_DATA = [
+  // Elements (reference state: ΔHf° = 0, ΔGf° = 0)
+  {cat:"Elements (reference state — all values = 0)",name:"",formula:"",hf:null,s:null,gf:null,header:true},
+  {name:"Hydrogen gas",      formula:"H₂(g)",     hf:0,    s:130.7, gf:0},
+  {name:"Oxygen gas",        formula:"O₂(g)",     hf:0,    s:205.2, gf:0},
+  {name:"Nitrogen gas",      formula:"N₂(g)",     hf:0,    s:191.6, gf:0},
+  {name:"Carbon (graphite)", formula:"C(graphite)",hf:0,    s:5.7,   gf:0},
+  {name:"Carbon (diamond)",  formula:"C(diamond)", hf:1.9,  s:2.4,   gf:2.9},
+  {name:"Sulfur (rhombic)",  formula:"S(s)",       hf:0,    s:32.1,  gf:0},
+  {name:"Chlorine gas",      formula:"Cl₂(g)",     hf:0,    s:223.1, gf:0},
+  {name:"Bromine liquid",    formula:"Br₂(l)",     hf:0,    s:152.2, gf:0},
+  {name:"Iodine solid",      formula:"I₂(s)",      hf:0,    s:116.1, gf:0},
+  {name:"Iron",              formula:"Fe(s)",      hf:0,    s:27.3,  gf:0},
+  {name:"Copper",            formula:"Cu(s)",      hf:0,    s:33.2,  gf:0},
+  {name:"Zinc",              formula:"Zn(s)",      hf:0,    s:41.6,  gf:0},
+  {name:"Sodium",            formula:"Na(s)",      hf:0,    s:51.2,  gf:0},
+  {name:"Calcium",           formula:"Ca(s)",      hf:0,    s:41.6,  gf:0},
+  {name:"Aluminium",         formula:"Al(s)",      hf:0,    s:28.3,  gf:0},
+  {name:"Mercury liquid",    formula:"Hg(l)",      hf:0,    s:76.0,  gf:0},
+
+  // Inorganic compounds
+  {cat:"Inorganic Compounds",name:"",formula:"",hf:null,s:null,gf:null,header:true},
+  {name:"Water (liquid)",    formula:"H₂O(l)",     hf:-285.8, s:70.0,  gf:-237.1},
+  {name:"Water (gas)",       formula:"H₂O(g)",     hf:-241.8, s:188.7, gf:-228.6},
+  {name:"Hydrogen peroxide", formula:"H₂O₂(l)",    hf:-187.8, s:109.6, gf:-120.4},
+  {name:"Ammonia",           formula:"NH₃(g)",     hf:-46.1,  s:192.5, gf:-16.5},
+  {name:"Nitrogen monoxide", formula:"NO(g)",      hf:90.3,   s:210.8, gf:86.6},
+  {name:"Nitrogen dioxide",  formula:"NO₂(g)",     hf:33.2,   s:240.1, gf:51.3},
+  {name:"Dinitrogen oxide",  formula:"N₂O(g)",     hf:82.1,   s:219.9, gf:104.2},
+  {name:"Sulfur dioxide",    formula:"SO₂(g)",     hf:-296.8, s:248.2, gf:-300.2},
+  {name:"Sulfur trioxide",   formula:"SO₃(g)",     hf:-395.7, s:256.8, gf:-371.1},
+  {name:"Hydrogen sulfide",  formula:"H₂S(g)",     hf:-20.6,  s:205.8, gf:-33.4},
+  {name:"Carbon monoxide",   formula:"CO(g)",      hf:-110.5, s:197.7, gf:-137.2},
+  {name:"Carbon dioxide",    formula:"CO₂(g)",     hf:-393.5, s:213.8, gf:-394.4},
+  {name:"Hydrogen chloride", formula:"HCl(g)",     hf:-92.3,  s:186.9, gf:-95.3},
+  {name:"Hydrogen fluoride", formula:"HF(g)",      hf:-271.1, s:173.8, gf:-273.2},
+  {name:"Hydrogen bromide",  formula:"HBr(g)",     hf:-36.3,  s:198.7, gf:-53.4},
+  {name:"Ozone",             formula:"O₃(g)",      hf:142.7,  s:238.9, gf:163.2},
+  {name:"Silicon dioxide",   formula:"SiO₂(s)",    hf:-910.7, s:41.5,  gf:-856.3},
+
+  // Metal oxides & salts
+  {cat:"Metal Oxides & Salts",name:"",formula:"",hf:null,s:null,gf:null,header:true},
+  {name:"Calcium oxide",       formula:"CaO(s)",    hf:-635.1, s:38.2,  gf:-603.5},
+  {name:"Calcium carbonate",   formula:"CaCO₃(s)",  hf:-1206.9,s:92.9,  gf:-1128.8},
+  {name:"Calcium hydroxide",   formula:"Ca(OH)₂(s)",hf:-986.1, s:83.4,  gf:-898.4},
+  {name:"Iron(III) oxide",     formula:"Fe₂O₃(s)",  hf:-824.2, s:87.4,  gf:-742.2},
+  {name:"Iron(II,III) oxide",  formula:"Fe₃O₄(s)",  hf:-1118.4,s:146.4, gf:-1015.4},
+  {name:"Aluminium oxide",     formula:"Al₂O₃(s)",  hf:-1675.7,s:50.9,  gf:-1582.3},
+  {name:"Copper(II) oxide",    formula:"CuO(s)",    hf:-157.3, s:42.6,  gf:-129.7},
+  {name:"Zinc oxide",          formula:"ZnO(s)",    hf:-350.5, s:43.7,  gf:-320.5},
+  {name:"Sodium hydroxide",    formula:"NaOH(s)",   hf:-425.6, s:64.5,  gf:-379.7},
+  {name:"Sodium chloride",     formula:"NaCl(s)",   hf:-411.2, s:72.1,  gf:-384.2},
+  {name:"Potassium chloride",  formula:"KCl(s)",    hf:-436.7, s:82.6,  gf:-408.8},
+  {name:"Magnesium oxide",     formula:"MgO(s)",    hf:-601.6, s:27.0,  gf:-569.3},
+  {name:"Mercury(II) oxide",   formula:"HgO(s)",    hf:-90.8,  s:70.3,  gf:-58.5},
+
+  // Aqueous ions
+  {cat:"Aqueous Ions (ΔHf° of formation at 1 mol/L)",name:"",formula:"",hf:null,s:null,gf:null,header:true},
+  {name:"Hydrogen ion",       formula:"H⁺(aq)",    hf:0,    s:0,    gf:0},
+  {name:"Hydroxide ion",      formula:"OH⁻(aq)",   hf:-230.0,s:-10.8,gf:-157.3},
+  {name:"Chloride ion",       formula:"Cl⁻(aq)",   hf:-167.2,s:56.5, gf:-131.2},
+  {name:"Sodium ion",         formula:"Na⁺(aq)",   hf:-240.1,s:59.0, gf:-261.9},
+  {name:"Calcium ion",        formula:"Ca²⁺(aq)",  hf:-542.8,s:-53.1,gf:-553.6},
+  {name:"Sulfate ion",        formula:"SO₄²⁻(aq)", hf:-909.3,s:20.1, gf:-744.5},
+
+  // Organic compounds
+  {cat:"Organic Compounds (combustion energies)",name:"",formula:"",hf:null,s:null,gf:null,header:true},
+  {name:"Methane",            formula:"CH₄(g)",     hf:-74.8,  s:186.3, gf:-50.7},
+  {name:"Ethane",             formula:"C₂H₆(g)",   hf:-84.7,  s:229.5, gf:-32.8},
+  {name:"Propane",            formula:"C₃H₈(g)",   hf:-103.8, s:269.9, gf:-23.4},
+  {name:"Butane",             formula:"C₄H₁₀(g)",  hf:-126.2, s:310.1, gf:-17.0},
+  {name:"Ethene (ethylene)",  formula:"C₂H₄(g)",   hf:52.5,   s:219.6, gf:68.4},
+  {name:"Ethyne (acetylene)", formula:"C₂H₂(g)",   hf:226.7,  s:200.9, gf:209.2},
+  {name:"Benzene (liquid)",   formula:"C₆H₆(l)",   hf:49.1,   s:173.4, gf:124.5},
+  {name:"Benzene (gas)",      formula:"C₆H₆(g)",   hf:82.9,   s:269.2, gf:129.7},
+  {name:"Methanol",           formula:"CH₃OH(l)",   hf:-238.7, s:126.8, gf:-166.3},
+  {name:"Ethanol",            formula:"C₂H₅OH(l)",  hf:-277.7, s:160.7, gf:-174.8},
+  {name:"Acetic acid",        formula:"CH₃COOH(l)", hf:-484.3, s:159.8, gf:-389.9},
+  {name:"Glucose",            formula:"C₆H₁₂O₆(s)",hf:-1274.5,s:212.1, gf:-910.4},
+  {name:"Sucrose",            formula:"C₁₂H₂₂O₁₁(s)",hf:-2222.1,s:360.2,gf:-1543.1},
+  {name:"Urea",               formula:"(NH₂)₂CO(s)",hf:-333.1, s:104.6, gf:-197.4},
+];
+
+function buildThermoPanel() {
+  const body = document.getElementById("thermoBody");
+  if (body.children.length > 0) return;
+
+  const fmtVal = (v, colorPos) => {
+    if (v === null || v === undefined) return '<td class="t-val">—</td>';
+    const cls = v > 0 ? (colorPos ? 't-pos' : 't-neg') : v < 0 ? (colorPos ? 't-neg' : 't-pos') : 't-zero';
+    const sign = v > 0 ? '+' : '';
+    return `<td class="t-val ${cls}">${sign}${v.toFixed(1)}</td>`;
+  };
+
+  const buildRows = (data) => data.map(d => {
+    if (d.header) return `<tr class="thermo-section-head"><td colspan="5">${d.cat}</td></tr>`;
+    return `<tr>
+      <td>${d.name}</td>
+      <td class="t-formula">${d.formula}</td>
+      ${fmtVal(d.hf, false)}
+      ${fmtVal(d.s, true)}
+      ${fmtVal(d.gf, false)}
+    </tr>`;
+  }).join('');
+
+  body.innerHTML = `
+    <div class="thermo-wrap">
+      <div class="thermo-title">
+        <h3>Standard Thermochemical Data (298 K, 1 atm)</h3>
+        <p>ΔH°f = standard enthalpy of formation &nbsp;|&nbsp; S° = standard molar entropy &nbsp;|&nbsp; ΔG°f = standard free energy of formation</p>
+      </div>
+      <input class="thermo-search" id="thermoSearch" type="text" placeholder="🔍  Search by name or formula...">
+      <div style="font-size:0.68rem;color:var(--text-muted);margin-bottom:8px;line-height:1.6;">
+        <strong>Key formulas:</strong> &nbsp;
+        ΔH°rxn = Σ ΔH°f(products) − Σ ΔH°f(reactants) &nbsp;|&nbsp;
+        ΔS°rxn = Σ S°(products) − Σ S°(reactants) &nbsp;|&nbsp;
+        ΔG°rxn = ΔH°rxn − TΔS°rxn &nbsp;|&nbsp;
+        <span style="color:#22c55e;">Green</span> = more thermodynamically stable direction &nbsp;|&nbsp;
+        <span style="color:#ef4444;">Red</span> = less stable
+      </div>
+      <div style="overflow-y:auto;max-height:480px;">
+        <table class="thermo-table" id="thermoTable">
+          <thead><tr>
+            <th>Name</th>
+            <th>Formula</th>
+            <th style="text-align:right">ΔH°f (kJ/mol)</th>
+            <th style="text-align:right">S° (J/mol·K)</th>
+            <th style="text-align:right">ΔG°f (kJ/mol)</th>
+          </tr></thead>
+          <tbody id="thermoBody2">${buildRows(THERMO_DATA)}</tbody>
+        </table>
+      </div>
+      <div style="font-size:0.62rem;color:var(--text-muted);margin-top:8px;font-style:italic;">
+        Source: NIST WebBook; Atkins &amp; de Paula, Physical Chemistry, 10th ed. (2014).
+        Values at 298.15 K, 100 kPa (IUPAC standard). Minor rounding applied.
+      </div>
+    </div>`;
+
+  document.getElementById('thermoSearch').addEventListener('input', function() {
+    const q = this.value.toLowerCase();
+    const filtered = q.length < 2 ? THERMO_DATA : THERMO_DATA.filter(d =>
+      d.header || d.name.toLowerCase().includes(q) || d.formula.toLowerCase().includes(q)
+    );
+    // Always show headers for context
+    document.getElementById('thermoBody2').innerHTML = buildRows(filtered);
+  });
+}
+
+document.getElementById("btnThermo").addEventListener("click", () => {
+  buildThermoPanel();
+  openPanel("thermoOverlay");
+});
+document.getElementById("closeThermo").addEventListener("click", () => closePanel("thermoOverlay"));
+

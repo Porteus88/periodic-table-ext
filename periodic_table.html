@@ -560,6 +560,313 @@
     text-align:center;padding:8px 0;}
   .iso-note{font-size:0.62rem;color:var(--text-muted);font-style:italic;
     margin-top:8px;border-top:1px solid var(--border);padding-top:6px;line-height:1.5;}
+
+  /* ── ELECTRON CONFIG ── */
+  .ec-grid{display:grid;grid-template-columns:repeat(18,minmax(48px,1fr));gap:2px;min-width:880px;}
+  .ec-el{border-radius:5px;padding:3px 2px 2px;cursor:pointer;border:1px solid transparent;
+    aspect-ratio:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
+    user-select:none;transition:transform 0.12s,border-color 0.12s,box-shadow 0.12s;}
+  .ec-el:hover{transform:scale(1.15);z-index:30;border-color:rgba(255,255,255,0.8);
+    box-shadow:0 4px 16px rgba(0,0,0,0.7);}
+  .ec-el .ec-z{font-family:"Space Mono",monospace;font-size:0.42rem;color:rgba(255,255,255,0.65);
+    align-self:flex-start;line-height:1;}
+  .ec-el .ec-sym{font-family:"Atkinson Hyperlegible","Inter",sans-serif;font-size:0.9rem;
+    font-weight:700;line-height:1.1;color:rgba(255,255,255,0.95);}
+  .ec-el .ec-cfg{font-family:"Space Mono",monospace;font-size:0.32rem;
+    color:rgba(255,255,255,0.55);line-height:1.2;margin-top:1px;text-align:center;word-break:break-all;}
+  .light .ec-el .ec-z{color:rgba(0,0,0,0.5);}
+  .light .ec-el .ec-sym{color:rgba(0,0,0,0.85);}
+  .light .ec-el .ec-cfg{color:rgba(0,0,0,0.45);}
+  .ec-block-label{display:flex;align-items:center;justify-content:center;font-family:"Space Mono",monospace;
+    font-size:0.52rem;font-weight:800;letter-spacing:1px;text-transform:uppercase;opacity:0.7;}
+  .ec-detail-box{margin-top:14px;background:var(--surface2);border:1px solid var(--border);
+    border-radius:12px;padding:16px 18px;}
+  .ec-detail-header{display:flex;align-items:center;gap:14px;margin-bottom:12px;
+    border-bottom:1px solid var(--border);padding-bottom:10px;}
+  .ec-detail-sbox{width:64px;height:64px;border-radius:10px;display:flex;flex-direction:column;
+    align-items:center;justify-content:center;border:2px solid rgba(255,255,255,0.15);flex-shrink:0;}
+  .light .ec-detail-sbox{border-color:rgba(0,0,0,0.1);}
+  .ec-detail-sbox .ed-z{font-family:"Space Mono",monospace;font-size:0.62rem;color:rgba(255,255,255,0.6);}
+  .light .ec-detail-sbox .ed-z{color:rgba(0,0,0,0.5);}
+  .ec-detail-sbox .ed-sym{font-family:"Atkinson Hyperlegible","Inter",sans-serif;font-size:1.7rem;
+    font-weight:700;color:white;line-height:1;}
+  .light .ec-detail-sbox .ed-sym{color:rgba(0,0,0,0.85);}
+  .ec-detail-sbox .ed-mass{font-family:"Space Mono",monospace;font-size:0.5rem;
+    color:rgba(255,255,255,0.5);}
+  .light .ec-detail-sbox .ed-mass{color:rgba(0,0,0,0.4);}
+  .ec-detail-info h3{font-family:"Atkinson Hyperlegible","Inter",sans-serif;font-size:1.1rem;
+    font-weight:700;color:var(--text);}
+  .ec-detail-info .ec-cat-badge{display:inline-block;margin-top:4px;font-size:0.58rem;
+    font-weight:700;letter-spacing:1px;text-transform:uppercase;padding:2px 8px;
+    border-radius:999px;color:white;}
+  .ec-config-display{margin-top:10px;}
+  .ec-config-full{font-family:"Space Mono",monospace;font-size:0.82rem;color:var(--accent);
+    font-weight:700;margin-bottom:8px;word-break:break-all;line-height:1.6;}
+  .ec-orbitals{display:flex;flex-direction:column;gap:6px;margin-top:8px;}
+  .ec-subshell-group{display:flex;flex-direction:row;align-items:center;gap:8px;
+    padding:3px 6px;border-left:2px solid var(--border);}
+  .ec-energy-axis{display:flex;flex-direction:column;align-items:center;justify-content:space-between;
+    padding:4px 0;min-height:60px;margin-right:4px;}
+  .ec-energy-label{font-family:"Space Mono",monospace;font-size:0.52rem;letter-spacing:1px;
+    text-transform:uppercase;color:var(--text-muted);writing-mode:vertical-rl;
+    transform:rotate(180deg);}
+  .ec-energy-arrow{font-size:0.9rem;color:var(--text-muted);}
+  .ec-subshell-group{display:flex;flex-direction:column;align-items:center;gap:3px;}
+  .ec-subshell-label{font-family:"Space Mono",monospace;font-size:0.58rem;font-weight:700;
+    color:var(--text-muted);letter-spacing:0.5px;}
+  .ec-orbital-row{display:flex;gap:3px;}
+  .ec-box{width:28px;height:28px;border:2px solid var(--border);border-radius:4px;
+    display:flex;align-items:center;justify-content:center;font-size:0.9rem;
+    background:var(--surface);transition:background 0.15s;}
+  .ec-box.filled-1{background:color-mix(in srgb,var(--accent) 25%,var(--surface));
+    border-color:var(--accent);}
+  .ec-box.filled-2{background:color-mix(in srgb,var(--accent) 45%,var(--surface));
+    border-color:var(--accent);}
+  .ec-note{font-size:0.68rem;color:var(--text-muted);font-style:italic;margin-top:8px;}
+  .ec-block-s{color:#ef4444;} .ec-block-p{color:#3b82f6;}
+  .ec-block-d{color:#f97316;} .ec-block-f{color:#8b5cf6;}
+  .ec-section-gap{grid-column:1/-1;height:5px;}
+  .ec-center{grid-row:1/4;grid-column:3/13;display:flex;flex-direction:column;
+    align-items:center;justify-content:center;gap:4px;padding:6px;text-align:center;}
+  .ec-center .ec-big-title{font-size:1.05rem;font-weight:800;
+    background:linear-gradient(135deg,var(--accent),var(--accent2));
+    -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
+  .ec-center .ec-sub{font-family:"Space Mono",monospace;font-size:0.46rem;
+    color:var(--text-muted);letter-spacing:2px;text-transform:uppercase;}
+  .ec-block-legend{display:flex;gap:14px;flex-wrap:wrap;margin-top:6px;}
+  .ec-legend-item{display:flex;align-items:center;gap:5px;font-size:0.65rem;}
+  .ec-legend-dot{width:10px;height:10px;border-radius:2px;}
+
+  /* ── NAMING TOOL ── */
+  .naming-wrap{display:flex;flex-direction:column;gap:16px;}
+  .naming-mode-toggle{display:flex;gap:8px;margin-bottom:4px;}
+  .naming-mode-btn{flex:1;padding:8px;background:var(--surface2);border:1px solid var(--border);
+    border-radius:8px;cursor:pointer;font-family:"Space Mono",monospace;font-size:0.62rem;
+    font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--text-muted);
+    transition:all 0.2s;}
+  .naming-mode-btn.active{background:color-mix(in srgb,var(--accent) 20%,var(--surface2));
+    border-color:var(--accent);color:var(--accent);}
+  .naming-selects{display:grid;grid-template-columns:1fr auto 1fr;gap:10px;align-items:center;}
+  .naming-select-label{font-family:"Space Mono",monospace;font-size:0.6rem;letter-spacing:1px;
+    text-transform:uppercase;color:var(--text-muted);margin-bottom:5px;}
+  .naming-select{width:100%;padding:8px 10px;background:var(--surface2);border:1px solid var(--border);
+    border-radius:8px;color:var(--text);font-family:"Atkinson Hyperlegible","Inter",sans-serif;
+    font-size:0.85rem;cursor:pointer;outline:none;}
+  .naming-select:focus{border-color:var(--accent);}
+  .naming-plus{font-size:1.4rem;color:var(--text-muted);font-weight:300;text-align:center;}
+  .naming-result{background:color-mix(in srgb,var(--accent) 8%,var(--surface2));
+    border:1px solid color-mix(in srgb,var(--accent) 30%,var(--border));border-radius:12px;
+    padding:18px 22px;text-align:center;}
+  .naming-result-formula{font-family:"Atkinson Hyperlegible","Inter",sans-serif;font-size:2.4rem;
+    font-weight:800;color:var(--accent);letter-spacing:-0.5px;line-height:1;}
+  .naming-result-name{font-family:"Atkinson Hyperlegible","Inter",sans-serif;font-size:1.15rem;
+    font-weight:600;color:var(--text);margin-top:6px;}
+  .naming-result-breakdown{font-family:"Space Mono",monospace;font-size:0.68rem;
+    color:var(--text-muted);margin-top:8px;line-height:1.7;}
+  .naming-rules{margin-top:14px;border-top:1px solid var(--border);padding-top:12px;}
+  .naming-rules-title{font-family:"Space Mono",monospace;font-size:0.6rem;letter-spacing:1px;
+    text-transform:uppercase;color:var(--text-muted);margin-bottom:8px;}
+  .naming-rule{font-size:0.76rem;color:var(--text);padding:5px 0;
+    border-bottom:1px solid color-mix(in srgb,var(--border) 40%,transparent);line-height:1.5;}
+  .naming-rule:last-child{border-bottom:none;}
+  .naming-input-wrap{display:flex;gap:8px;align-items:stretch;}
+  .naming-text-input{flex:1;padding:10px 12px;background:var(--surface2);border:1px solid var(--border);
+    border-radius:8px;color:var(--text);font-family:"Space Mono",monospace;font-size:0.9rem;
+    outline:none;}
+  .naming-text-input:focus{border-color:var(--accent);}
+  .naming-parse-btn{padding:10px 16px;background:color-mix(in srgb,var(--accent) 20%,var(--surface2));
+    border:1px solid var(--accent);border-radius:8px;cursor:pointer;color:var(--accent);
+    font-family:"Space Mono",monospace;font-size:0.7rem;font-weight:700;letter-spacing:1px;
+    text-transform:uppercase;transition:all 0.2s;}
+  .naming-parse-btn:hover{background:var(--accent);color:var(--bg);}
+
+  /* ── VSEPR ── */
+  .vsepr-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:14px;margin-top:6px;}
+  .vsepr-card{background:var(--surface2);border:1px solid var(--border);border-radius:12px;
+    padding:14px;display:flex;flex-direction:column;align-items:center;gap:8px;
+    transition:border-color 0.2s,box-shadow 0.2s;}
+  .vsepr-card:hover{border-color:var(--accent);
+    box-shadow:0 4px 16px rgba(56,189,248,0.15);}
+  .vsepr-shape-name{font-family:"Atkinson Hyperlegible","Inter",sans-serif;font-size:0.92rem;
+    font-weight:700;color:var(--text);text-align:center;}
+  .vsepr-svg{width:120px;height:100px;}
+  .vsepr-formula{font-family:"Space Mono",monospace;font-size:0.72rem;color:var(--accent);
+    font-weight:700;}
+  .vsepr-detail-row{display:flex;justify-content:space-between;width:100%;font-size:0.72rem;}
+  .vsepr-detail-label{color:var(--text-muted);}
+  .vsepr-detail-val{color:var(--text);font-weight:600;}
+  .vsepr-angle{font-family:"Space Mono",monospace;font-size:0.8rem;color:var(--accent2);
+    font-weight:700;}
+  .vsepr-polarity{font-size:0.72rem;font-weight:700;padding:2px 8px;border-radius:999px;}
+  .vsepr-polar{background:color-mix(in srgb,#ef4444 15%,var(--surface2));color:#ef4444;
+    border:1px solid #ef4444;}
+  .vsepr-nonpolar{background:color-mix(in srgb,#22c55e 15%,var(--surface2));color:#22c55e;
+    border:1px solid #22c55e;}
+  .vsepr-may{background:color-mix(in srgb,#eab308 15%,var(--surface2));color:#eab308;
+    border:1px solid #eab308;}
+  .vsepr-examples{font-size:0.7rem;color:var(--text-muted);font-style:italic;text-align:center;}
+  .vsepr-steric{font-family:"Space Mono",monospace;font-size:0.68rem;color:var(--text-muted);}
+
+  /* ── EQUILIBRIUM ── */
+  .keq-section{margin-bottom:20px;}
+  .keq-section-title{font-family:"Space Mono",monospace;font-size:0.65rem;letter-spacing:1.5px;
+    text-transform:uppercase;color:var(--accent);margin-bottom:10px;padding-bottom:6px;
+    border-bottom:2px solid var(--border);}
+  .keq-card{background:var(--surface2);border:1px solid var(--border);border-radius:10px;
+    padding:12px 16px;margin-bottom:10px;}
+  .keq-expression{font-family:"Space Mono",monospace;font-size:0.82rem;color:var(--text);
+    font-weight:600;line-height:1.8;margin-bottom:6px;}
+  .keq-desc{font-size:0.76rem;color:var(--text-muted);line-height:1.6;}
+  .keq-formula{font-family:"Space Mono",monospace;font-size:0.9rem;color:var(--accent2);
+    font-weight:700;text-align:center;padding:8px;background:color-mix(in srgb,var(--accent2) 8%,var(--surface2));
+    border-radius:6px;margin-top:6px;}
+  .keq-table{width:100%;border-collapse:collapse;font-size:0.78rem;}
+  .keq-table th{background:var(--surface2);padding:8px 12px;text-align:left;
+    font-family:"Space Mono",monospace;font-size:0.58rem;letter-spacing:1px;
+    text-transform:uppercase;color:var(--accent);border-bottom:2px solid var(--border);}
+  .keq-table td{padding:7px 12px;border-bottom:1px solid color-mix(in srgb,var(--border) 50%,transparent);
+    color:var(--text);}
+  .keq-table tr:hover td{background:var(--surface2);}
+  .keq-val-col{font-family:"Space Mono",monospace;text-align:right;font-weight:700;color:var(--accent2);}
+  .keq-rxn{font-family:"Space Mono",monospace;font-size:0.72rem;}
+
+  /* ── ELECTROCHEM ── */
+  .ec2-section{margin-bottom:22px;}
+  .ec2-section-title{font-family:"Space Mono",monospace;font-size:0.65rem;letter-spacing:1.5px;
+    text-transform:uppercase;color:var(--accent);margin-bottom:10px;padding-bottom:6px;
+    border-bottom:2px solid var(--border);}
+  .ec2-formula-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;}
+  .ec2-formula-card{background:var(--surface2);border:1px solid var(--border);border-radius:10px;
+    padding:12px 14px;}
+  .ec2-formula-card .ef-label{font-family:"Space Mono",monospace;font-size:0.58rem;
+    letter-spacing:1px;text-transform:uppercase;color:var(--text-muted);margin-bottom:6px;}
+  .ec2-formula-card .ef-eq{font-family:"Space Mono",monospace;font-size:0.9rem;
+    color:var(--accent);font-weight:700;text-align:center;padding:6px;
+    background:color-mix(in srgb,var(--accent) 8%,var(--surface2));border-radius:6px;}
+  .ec2-formula-card .ef-desc{font-size:0.7rem;color:var(--text-muted);margin-top:6px;line-height:1.5;}
+  .ec2-cell-diagram{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:8px;}
+  .ec2-cell-box{background:var(--surface2);border:1px solid var(--border);border-radius:10px;
+    padding:14px;text-align:center;}
+  .ec2-cell-title{font-family:"Atkinson Hyperlegible","Inter",sans-serif;font-size:0.9rem;
+    font-weight:700;color:var(--text);margin-bottom:8px;}
+  .ec2-cell-svg{width:100%;max-width:280px;}
+  .ec2-cell-desc{font-size:0.7rem;color:var(--text-muted);margin-top:8px;line-height:1.5;}
+  .ec2-half-reactions{margin-top:10px;}
+  .ec2-half{font-family:"Space Mono",monospace;font-size:0.76rem;padding:6px 10px;
+    border-radius:6px;margin-bottom:5px;line-height:1.5;}
+  .ec2-half.cathode{background:color-mix(in srgb,#22c55e 12%,var(--surface2));color:#22c55e;border:1px solid #22c55e;}
+  .ec2-half.anode{background:color-mix(in srgb,#ef4444 12%,var(--surface2));color:#ef4444;border:1px solid #ef4444;}
+  .ec2-sign-convention{background:color-mix(in srgb,var(--accent2) 8%,var(--surface2));
+    border:1px solid color-mix(in srgb,var(--accent2) 30%,var(--border));border-radius:8px;
+    padding:10px 14px;font-size:0.74rem;color:var(--text);line-height:1.7;}
+
+  /* ── ORGANIC ── */
+  .org-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:14px;}
+  .org-card{background:var(--surface2);border:1px solid var(--border);border-radius:12px;
+    padding:14px 16px;display:flex;flex-direction:column;gap:8px;
+    transition:border-color 0.2s,box-shadow 0.2s;}
+  .org-card:hover{border-color:var(--accent);box-shadow:0 4px 16px rgba(56,189,248,0.12);}
+  .org-card-header{display:flex;align-items:center;justify-content:space-between;}
+  .org-class-name{font-family:"Atkinson Hyperlegible","Inter",sans-serif;font-size:0.95rem;
+    font-weight:700;color:var(--text);}
+  .org-badge{font-family:"Space Mono",monospace;font-size:0.58rem;font-weight:700;
+    padding:2px 8px;border-radius:999px;letter-spacing:0.5px;}
+  .org-svg{width:100%;height:70px;}
+  .org-formula{font-family:"Space Mono",monospace;font-size:0.78rem;color:var(--accent);
+    font-weight:700;}
+  .org-name-rules{font-size:0.72rem;color:var(--text-muted);line-height:1.6;}
+  .org-example{font-family:"Space Mono",monospace;font-size:0.7rem;
+    color:var(--accent2);font-style:italic;}
+  .org-homologous{margin-top:14px;border-top:1px solid var(--border);padding-top:12px;}
+  .org-homo-title{font-family:"Space Mono",monospace;font-size:0.6rem;letter-spacing:1px;
+    text-transform:uppercase;color:var(--accent);margin-bottom:8px;}
+  .org-homo-table{width:100%;border-collapse:collapse;font-size:0.76rem;}
+  .org-homo-table th{background:var(--surface2);padding:6px 10px;text-align:left;
+    font-family:"Space Mono",monospace;font-size:0.56rem;letter-spacing:1px;
+    text-transform:uppercase;color:var(--accent);border-bottom:2px solid var(--border);}
+  .org-homo-table td{padding:5px 10px;border-bottom:1px solid color-mix(in srgb,var(--border) 40%,transparent);
+    color:var(--text);}
+
+  /* ── MOLAR MASS ── */
+  .mm-layout{display:flex;flex-direction:column;gap:16px;}
+  .mm-pt-grid{display:grid;grid-template-columns:repeat(18,minmax(34px,1fr));
+    gap:2px;min-width:620px;}
+  .mm-el{border-radius:4px;padding:2px 1px;cursor:pointer;border:1px solid transparent;
+    aspect-ratio:1;display:flex;flex-direction:column;align-items:center;
+    justify-content:center;user-select:none;transition:transform 0.1s,border-color 0.1s;}
+  .mm-el:hover{transform:scale(1.2);z-index:20;border-color:rgba(255,255,255,0.8);}
+  .mm-el:active{transform:scale(0.95);}
+  .mm-el .mm-sym{font-family:"Atkinson Hyperlegible","Inter",sans-serif;font-size:0.72rem;
+    font-weight:700;color:rgba(255,255,255,0.95);line-height:1;}
+  .mm-el .mm-z{font-family:"Space Mono",monospace;font-size:0.32rem;
+    color:rgba(255,255,255,0.6);line-height:1;align-self:flex-start;}
+  .light .mm-el .mm-sym{color:rgba(0,0,0,0.85);}
+  .light .mm-el .mm-z{color:rgba(0,0,0,0.5);}
+  .mm-display{background:var(--surface2);border:1px solid var(--border);border-radius:12px;
+    padding:14px 18px;}
+  .mm-formula-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+  .mm-formula-display{font-family:"Atkinson Hyperlegible","Inter",sans-serif;font-size:2rem;
+    font-weight:800;color:var(--text);min-width:120px;flex:1;letter-spacing:-0.3px;
+    word-break:break-all;}
+  .mm-result{text-align:right;flex-shrink:0;}
+  .mm-result-value{font-family:"Space Mono",monospace;font-size:1.6rem;font-weight:700;
+    color:var(--accent);}
+  .mm-result-unit{font-family:"Space Mono",monospace;font-size:0.72rem;
+    color:var(--text-muted);}
+  .mm-breakdown{margin-top:10px;border-top:1px solid var(--border);padding-top:10px;}
+  .mm-breakdown-item{display:flex;justify-content:space-between;align-items:center;
+    padding:4px 0;border-bottom:1px solid color-mix(in srgb,var(--border) 40%,transparent);
+    font-size:0.78rem;}
+  .mm-breakdown-item:last-child{border-bottom:none;}
+  .mm-breakdown-sym{font-family:"Atkinson Hyperlegible","Inter",sans-serif;
+    font-weight:700;color:var(--text);}
+  .mm-breakdown-math{font-family:"Space Mono",monospace;font-size:0.72rem;
+    color:var(--text-muted);}
+  .mm-breakdown-mass{font-family:"Space Mono",monospace;font-size:0.76rem;
+    font-weight:700;color:var(--accent);}
+  .mm-controls{display:flex;gap:8px;margin-top:8px;}
+  .mm-btn{padding:7px 14px;background:var(--surface2);border:1px solid var(--border);
+    border-radius:8px;cursor:pointer;font-family:"Space Mono",monospace;font-size:0.65rem;
+    font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--text);
+    transition:all 0.2s;}
+  .mm-btn:hover{border-color:var(--accent);color:var(--accent);}
+  .mm-btn.danger:hover{border-color:#ef4444;color:#ef4444;}
+  .mm-history{margin-top:10px;border-top:1px solid var(--border);padding-top:8px;}
+  .mm-history-title{font-family:"Space Mono",monospace;font-size:0.56rem;letter-spacing:1px;
+    text-transform:uppercase;color:var(--text-muted);margin-bottom:6px;}
+  .mm-history-item{display:flex;justify-content:space-between;font-size:0.74rem;
+    padding:3px 0;border-bottom:1px solid color-mix(in srgb,var(--border) 30%,transparent);
+    cursor:pointer;}
+  .mm-history-item:hover{color:var(--accent);}
+
+  /* ── THERMO ── */
+  .thermo-wrap{font-size:0.82rem;}
+  .thermo-title{text-align:center;margin-bottom:12px;}
+  .thermo-title h3{font-size:0.95rem;font-weight:700;
+    background:linear-gradient(135deg,var(--accent),var(--accent2));
+    -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
+  .thermo-title p{font-size:0.7rem;color:var(--text-muted);font-style:italic;margin-top:2px;}
+  .thermo-search{width:100%;padding:8px 12px;background:var(--surface2);border:1px solid var(--border);
+    border-radius:8px;color:var(--text);font-family:"Inter",sans-serif;font-size:0.85rem;
+    outline:none;margin-bottom:12px;}
+  .thermo-search:focus{border-color:var(--accent);}
+  .thermo-table{width:100%;border-collapse:collapse;}
+  .thermo-table th{background:var(--surface2);padding:8px 10px;text-align:left;
+    font-family:"Space Mono",monospace;font-size:0.56rem;letter-spacing:1px;
+    text-transform:uppercase;color:var(--accent);border-bottom:2px solid var(--border);
+    position:sticky;top:0;}
+  .thermo-table td{padding:6px 10px;border-bottom:1px solid color-mix(in srgb,var(--border) 50%,transparent);
+    color:var(--text);font-size:0.78rem;}
+  .thermo-table tr:hover td{background:var(--surface2);}
+  .thermo-table td.t-formula{font-family:"Space Mono",monospace;font-size:0.72rem;}
+  .thermo-table td.t-val{font-family:"Space Mono",monospace;font-size:0.72rem;
+    text-align:right;font-weight:700;}
+  .thermo-table td.t-pos{color:#22c55e;}
+  .thermo-table td.t-neg{color:#ef4444;}
+  .thermo-table td.t-zero{color:var(--text-muted);}
+  .thermo-section-head td{background:color-mix(in srgb,var(--accent) 10%,var(--surface2)) !important;
+    color:var(--accent);font-weight:700;font-size:0.68rem;letter-spacing:1px;
+    text-transform:uppercase;padding:5px 10px;}
 </style>
 </head>
 <body>
@@ -618,6 +925,32 @@
     <div class="side-divider"></div>
     <button class="side-btn" id="btnRedox">
       <span class="si">⚗️</span>Std Reduc. Pot.
+    </button>
+    <div class="side-divider"></div>
+    <div class="side-label">Chem 11/12</div>
+    <button class="side-btn" id="btnElecConfig">
+      <span class="si">🔷</span>Electron Config
+    </button>
+    <button class="side-btn" id="btnNaming">
+      <span class="si">🔤</span>Naming Tool
+    </button>
+    <button class="side-btn" id="btnVSEPR">
+      <span class="si">🔮</span>VSEPR
+    </button>
+    <button class="side-btn" id="btnEquilibrium">
+      <span class="si">⚖️</span>Equilibrium
+    </button>
+    <button class="side-btn" id="btnElectrochem">
+      <span class="si">🔌</span>Electrochem
+    </button>
+    <button class="side-btn" id="btnOrganic">
+      <span class="si">🧬</span>Organic
+    </button>
+    <button class="side-btn" id="btnMolarMass">
+      <span class="si">⚗️</span>Molar Mass
+    </button>
+    <button class="side-btn" id="btnThermo">
+      <span class="si">🌡️</span>Thermo Data
     </button>
   </div>
 
@@ -825,6 +1158,94 @@
       <div id="isotopePtGrid" class="iso-pt-grid"></div>
       <div id="isotopePopup" class="iso-popup" style="display:none"></div>
     </div>
+  </div>
+</div>
+
+<!-- ELECTRON CONFIGURATION PANEL -->
+<div class="panel-overlay" id="elecConfigOverlay">
+  <div class="panel-box" style="width:1050px">
+    <div class="panel-header">
+      <h2>🔷 Electron Configurations &amp; Orbital Diagrams</h2>
+      <button class="panel-close" id="closeElecConfig">✕</button>
+    </div>
+    <div class="panel-body" id="elecConfigBody"></div>
+  </div>
+</div>
+
+<!-- NAMING TOOL PANEL -->
+<div class="panel-overlay" id="namingOverlay">
+  <div class="panel-box" style="width:680px">
+    <div class="panel-header">
+      <h2>🔤 Ionic Compound Naming &amp; Formula Tool</h2>
+      <button class="panel-close" id="closeNaming">✕</button>
+    </div>
+    <div class="panel-body" id="namingBody"></div>
+  </div>
+</div>
+
+<!-- VSEPR PANEL -->
+<div class="panel-overlay" id="vseprOverlay">
+  <div class="panel-box" style="width:900px">
+    <div class="panel-header">
+      <h2>🔮 VSEPR &amp; Molecular Geometry</h2>
+      <button class="panel-close" id="closeVSEPR">✕</button>
+    </div>
+    <div class="panel-body" id="vseprBody"></div>
+  </div>
+</div>
+
+<!-- EQUILIBRIUM PANEL -->
+<div class="panel-overlay" id="equilibriumOverlay">
+  <div class="panel-box" style="width:800px">
+    <div class="panel-header">
+      <h2>⚖️ Equilibrium Constants</h2>
+      <button class="panel-close" id="closeEquilibrium">✕</button>
+    </div>
+    <div class="panel-body" id="equilibriumBody"></div>
+  </div>
+</div>
+
+<!-- ELECTROCHEM PANEL -->
+<div class="panel-overlay" id="electrochemOverlay">
+  <div class="panel-box" style="width:820px">
+    <div class="panel-header">
+      <h2>🔌 Electrochemical Cells Reference</h2>
+      <button class="panel-close" id="closeElectrochem">✕</button>
+    </div>
+    <div class="panel-body" id="electrochemBody"></div>
+  </div>
+</div>
+
+<!-- ORGANIC PANEL -->
+<div class="panel-overlay" id="organicOverlay">
+  <div class="panel-box" style="width:960px">
+    <div class="panel-header">
+      <h2>🧬 Organic Functional Groups</h2>
+      <button class="panel-close" id="closeOrganic">✕</button>
+    </div>
+    <div class="panel-body" id="organicBody"></div>
+  </div>
+</div>
+
+<!-- MOLAR MASS PANEL -->
+<div class="panel-overlay" id="molarMassOverlay">
+  <div class="panel-box" style="width:700px">
+    <div class="panel-header">
+      <h2>⚗️ Molar Mass Calculator</h2>
+      <button class="panel-close" id="closeMolarMass">✕</button>
+    </div>
+    <div class="panel-body" id="molarMassBody"></div>
+  </div>
+</div>
+
+<!-- THERMO PANEL -->
+<div class="panel-overlay" id="thermoOverlay">
+  <div class="panel-box" style="width:750px">
+    <div class="panel-header">
+      <h2>🌡️ Thermochemical Data (25°C, 1 atm)</h2>
+      <button class="panel-close" id="closeThermo">✕</button>
+    </div>
+    <div class="panel-body" id="thermoBody"></div>
   </div>
 </div>
 
