@@ -867,6 +867,35 @@
   .thermo-section-head td{background:color-mix(in srgb,var(--accent) 10%,var(--surface2)) !important;
     color:var(--accent);font-weight:700;font-size:0.68rem;letter-spacing:1px;
     text-transform:uppercase;padding:5px 10px;}
+
+  /* ── TOOLS ACCORDION ── */
+  .tools-accordion{position:relative;background:var(--surface);
+    border-top:1px solid var(--border);border-bottom:1px solid var(--border);
+    animation:accordionSlide 0.18s ease;}
+  @keyframes accordionSlide{
+    from{opacity:0;transform:translateY(8px);}
+    to{opacity:1;transform:translateY(0);}
+  }
+  .tools-accordion-inner{padding:10px 16px 12px;}
+  .tools-accordion-title{display:flex;align-items:center;justify-content:space-between;
+    margin-bottom:10px;}
+  .tools-accordion-title span{font-family:"Space Mono",monospace;font-size:0.65rem;
+    font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--accent2);}
+  .tools-accordion-close{background:none;border:1px solid var(--border);border-radius:5px;
+    color:var(--text-muted);cursor:pointer;font-size:0.7rem;padding:2px 7px;
+    transition:all 0.15s;}
+  .tools-accordion-close:hover{border-color:#ef4444;color:#ef4444;}
+  .tools-accordion-grid{display:flex;flex-wrap:wrap;gap:7px;}
+  .tools-acc-btn{display:flex;align-items:center;gap:7px;padding:7px 13px;
+    background:var(--surface2);border:1px solid var(--border);border-radius:8px;
+    cursor:pointer;color:var(--text);font-family:"Inter","Atkinson Hyperlegible",sans-serif;
+    font-size:0.78rem;font-weight:600;white-space:nowrap;
+    transition:all 0.15s;}
+  .tools-acc-btn:hover{border-color:var(--accent2);color:var(--accent2);
+    background:color-mix(in srgb,var(--accent2) 10%,var(--surface2));
+    transform:translateY(-1px);box-shadow:0 3px 10px rgba(0,0,0,0.3);}
+  .tools-acc-icon{font-size:1rem;line-height:1;}
+  .tools-acc-label{font-size:0.78rem;}
 </style>
 </head>
 <body>
@@ -926,37 +955,55 @@
     <button class="side-btn" id="btnRedox">
       <span class="si">⚗️</span>Std Reduc. Pot.
     </button>
-    <div class="side-divider"></div>
-    <div class="side-label">Chem 11/12</div>
-    <button class="side-btn" id="btnElecConfig">
-      <span class="si">🔷</span>Electron Config
-    </button>
-    <button class="side-btn" id="btnNaming">
-      <span class="si">🔤</span>Naming Tool
-    </button>
-    <button class="side-btn" id="btnVSEPR">
-      <span class="si">🔮</span>VSEPR
-    </button>
-    <button class="side-btn" id="btnEquilibrium">
-      <span class="si">⚖️</span>Equilibrium
-    </button>
-    <button class="side-btn" id="btnElectrochem">
-      <span class="si">🔌</span>Electrochem
-    </button>
-    <button class="side-btn" id="btnOrganic">
-      <span class="si">🧬</span>Organic
-    </button>
-    <button class="side-btn" id="btnMolarMass">
-      <span class="si">⚗️</span>Molar Mass
-    </button>
-    <button class="side-btn" id="btnThermo">
-      <span class="si">🌡️</span>Thermo Data
-    </button>
   </div>
 
   <!-- TABLE AREA -->
   <div class="table-area">
     <div class="pt-grid" id="ptGrid"></div>
+  </div>
+</div>
+
+<!-- TOOLS ACCORDION -->
+<div id="toolsAccordion" class="tools-accordion" style="display:none;">
+  <div class="tools-accordion-inner">
+    <div class="tools-accordion-title">
+      <span>🛠️ Chem 11/12 Tools</span>
+      <button class="tools-accordion-close" id="toolsAccordionClose">✕</button>
+    </div>
+    <div class="tools-accordion-grid">
+      <button class="tools-acc-btn" id="btnElecConfig">
+        <span class="tools-acc-icon">🔷</span>
+        <span class="tools-acc-label">Electron Config</span>
+      </button>
+      <button class="tools-acc-btn" id="btnNaming">
+        <span class="tools-acc-icon">🔤</span>
+        <span class="tools-acc-label">Naming Tool</span>
+      </button>
+      <button class="tools-acc-btn" id="btnVSEPR">
+        <span class="tools-acc-icon">🔮</span>
+        <span class="tools-acc-label">VSEPR</span>
+      </button>
+      <button class="tools-acc-btn" id="btnEquilibrium">
+        <span class="tools-acc-icon">⚖️</span>
+        <span class="tools-acc-label">Equilibrium</span>
+      </button>
+      <button class="tools-acc-btn" id="btnElectrochem">
+        <span class="tools-acc-icon">🔌</span>
+        <span class="tools-acc-label">Electrochem</span>
+      </button>
+      <button class="tools-acc-btn" id="btnOrganic">
+        <span class="tools-acc-icon">🧬</span>
+        <span class="tools-acc-label">Organic</span>
+      </button>
+      <button class="tools-acc-btn" id="btnMolarMass">
+        <span class="tools-acc-icon">⚗️</span>
+        <span class="tools-acc-label">Molar Mass</span>
+      </button>
+      <button class="tools-acc-btn" id="btnThermo">
+        <span class="tools-acc-icon">🌡️</span>
+        <span class="tools-acc-label">Thermo Data</span>
+      </button>
+    </div>
   </div>
 </div>
 
@@ -968,6 +1015,10 @@
   <button class="trend-btn" id="btnTrendRadii">⭕ Atomic / Ionic Radii</button>
   <span class="trends-label" style="margin-left:10px;">Reference:</span>
   <button class="trend-btn" id="btnIsotopes">☢️ Isotopes</button>
+  <button class="trend-btn" id="btnTools" style="margin-left:10px;
+    background:color-mix(in srgb,var(--accent2) 18%,var(--surface2));
+    border-color:color-mix(in srgb,var(--accent2) 50%,var(--border));
+    color:var(--accent2);">🛠️ Tools</button>
 </div>
 
 <!-- ELEMENT MODAL -->

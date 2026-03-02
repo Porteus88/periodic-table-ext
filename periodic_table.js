@@ -3220,3 +3220,27 @@ document.getElementById("btnThermo").addEventListener("click", () => {
 });
 document.getElementById("closeThermo").addEventListener("click", () => closePanel("thermoOverlay"));
 
+
+// ── TOOLS ACCORDION ──────────────────────────────────────────────
+const toolsAccordion = document.getElementById('toolsAccordion');
+
+document.getElementById('btnTools').addEventListener('click', () => {
+  const open = toolsAccordion.style.display !== 'none';
+  toolsAccordion.style.display = open ? 'none' : 'block';
+  document.getElementById('btnTools').style.outline =
+    open ? '' : '2px solid var(--accent2)';
+});
+
+document.getElementById('toolsAccordionClose').addEventListener('click', () => {
+  toolsAccordion.style.display = 'none';
+  document.getElementById('btnTools').style.outline = '';
+});
+
+// Close accordion when any tool inside it is clicked
+toolsAccordion.querySelectorAll('.tools-acc-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    toolsAccordion.style.display = 'none';
+    document.getElementById('btnTools').style.outline = '';
+  });
+});
+
