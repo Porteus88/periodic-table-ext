@@ -1774,41 +1774,153 @@ function showEcDetail(el) {
     groups.push({key, n: sub.n, l: sub.l, count: sub.count});
   });
 
-  // Group by principal quantum number for display
-  const byN = {};
-  groups.forEach(g => {
-    if (!byN[g.n]) byN[g.n] = [];
-    byN[g.n].push(g);
+  // ── Absolute energy positions for aufbau diagram ──────────────────
+  // Each subshell gets a {x, y} position in a coordinate system where:
+  //   y increases UPWARD (higher y = higher energy)
+  //   x: s=0, p=1, d=2, f=3 columns (with staggering)
+  //   Within each n level: s and p are at the same height;
+  //   d is slightly lower than p of same n (sits between n-1 and n s levels);
+  //   f is slightly lower than d of same n.
+  //
+  // Empirical energy ordering (aufbau):
+  //   1s < 2s < 2p < 3s < 3p < 4s < 3d < 4p < 5s < 4d < 5p < 6s < 4f < 5d < 6p < 7s < 5f < 6d
+  //
+  // We assign a yBase per principal level and stagger d/f downward.
+
+  // Y positions: each n-level spaced 120 units apart.
+  // Within each n: s and p are at the SAME height (base).
+  // d is 25 units below p of the same n (staircase down-right).
+  // f is 25 units below d of the same n (staircase continues).
+  // This means 3d sits 25 below 3p, 4f sits 25 below 4d, etc.
+  const nBase = n => n * 120;
+  const SUBSHELL_Y = {
+    '1s': nBase(1),
+    '2s': nBase(2),  '2p': nBase(2),
+    '3s': nBase(3),  '3p': nBase(3),  '3d': nBase(3) - 25,
+    '4s': nBase(4),  '4p': nBase(4),  '4d': nBase(4) - 25,  '4f': nBase(4) - 50,
+    '5s': nBase(5),  '5p': nBase(5),  '5d': nBase(5) - 25,  '5f': nBase(5) - 50,
+    '6s': nBase(6),  '6p': nBase(6),  '6d': nBase(6) - 25,
+    '7s': nBase(7),  '7p': nBase(7),
+  };
+
+  // X columns: s=0, p=1, d=2, f=3 — fixed pixel offsets, not proportional
+  const SUBSHELL_X = { s: 0, p: 1, d: 2, f: 3 };
+  const blockColor = { s:'#ef4444', p:'#3b82f6', d:'#f97316', f:'#8b5cf6' };
+
+  // Build positioned subshell list
+  const positioned = groups.map(sub => ({
+    ...sub,
+    y: SUBSHELL_Y[`${sub.n}${sub.l}`] ?? (sub.n * 100),
+    x: SUBSHELL_X[sub.l] ?? 0,
+    color: blockColor[sub.l] || '#94a3b8',
+  }));
+
+  // SVG dimensions
+  const maxY = Math.max(...positioned.map(s => s.y));
+  const minY = Math.min(...positioned.map(s => s.y));
+  const svgH = 440;
+  const svgW = 580;
+  const padTop = 24, padBot = 30, padLeft = 48, padRight = 16;
+  const drawH = svgH - padTop - padBot;
+
+  // Map energy Y to SVG Y (invert: high energy = low SVG y = top of diagram)
+  const yRange = maxY - minY || 100;
+  const toSvgY = (energyY) => padTop + drawH - ((energyY - minY) / yRange) * drawH;
+
+  // Fixed column centres for s, p, d, f
+  // s is leftmost, each successive type steps right AND slightly down
+  // The x centres are fixed; the y stagger is already encoded in SUBSHELL_Y
+  const COL_CENTRES = [85, 205, 360, 510];
+  const toSvgX = (col) => COL_CENTRES[col] ?? (padLeft + col * 140);
+
+  // Box dimensions
+  const BOX_W = 26, BOX_H = 26, BOX_GAP = 3;
+  const LABEL_H = 14;
+  const capacity = { s:2, p:6, d:10, f:14 };
+  const subshellW = (l) => (capacity[l]/2) * (BOX_W + BOX_GAP) - BOX_GAP;
+
+  let svgContent = '';
+
+  // Draw energy axis line
+  svgContent += `<line x1="${padLeft-14}" y1="${padTop}" x2="${padLeft-14}" y2="${padTop+drawH}"
+    stroke="rgba(148,163,184,0.3)" stroke-width="1.5"/>`;
+  svgContent += `<text x="${padLeft-16}" y="${padTop-6}" text-anchor="middle"
+    font-size="10" fill="rgba(148,163,184,0.7)">↑</text>`;
+  svgContent += `<text x="${padLeft-16}" y="${padTop+drawH/2}" text-anchor="middle"
+    font-size="9" fill="rgba(148,163,184,0.5)"
+    transform="rotate(-90,${padLeft-16},${padTop+drawH/2})">Energy</text>`;
+
+  // Column header labels
+  const colLabels = [['s','#ef4444'],['p','#3b82f6'],['d','#f97316'],['f','#8b5cf6']];
+  colLabels.forEach(([lbl, clr], i) => {
+    svgContent += `<text x="${COL_CENTRES[i]}" y="14" text-anchor="middle"
+      font-size="12" font-weight="800" fill="${clr}" font-family="monospace">${lbl}</text>`;
   });
 
-  const sortedN = Object.entries(byN).sort((a,b) => parseInt(a[0]) - parseInt(b[0]));
-
-  // Energy axis (left side label)
-  orbitalHTML = `<div style="display:flex;gap:0;align-items:stretch;">
-    <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;
-      margin-right:8px;padding:4px 0;">
-      <div style="font-size:0.6rem;color:var(--text-muted);font-family:'Space Mono',monospace;
-        letter-spacing:1px;text-transform:uppercase;writing-mode:vertical-rl;
-        transform:rotate(180deg);white-space:nowrap;">Energy (E)</div>
-      <div style="font-size:1rem;color:var(--text-muted);margin-top:4px;">↑</div>
-    </div>
-    <div style="display:flex;flex-direction:column-reverse;gap:6px;flex:1;">`;
-
-  sortedN.forEach(([n, subs]) => {
-    orbitalHTML += `<div class="ec-subshell-group">
-      <div style="font-family:'Space Mono',monospace;font-size:0.58rem;font-weight:700;
-        color:var(--text-muted);min-width:28px;">n=${n}</div>`;
-    subs.forEach(sub => {
-      const blockColor = {s:'#ef4444',p:'#3b82f6',d:'#f97316',f:'#8b5cf6'}[sub.l] || '#94a3b8';
-      orbitalHTML += `<div style="display:flex;flex-direction:column;align-items:center;gap:3px;">
-        <div class="ec-subshell-label" style="color:${blockColor};">${sub.n}${sub.l}<sup>${sub.count}</sup></div>
-        <div class="ec-orbital-row">${orbitalBoxes(sub.l, sub.count)}</div>
-      </div>`;
-    });
-    orbitalHTML += `</div>`;
+  // Draw each n-level horizontal dashed guide line (for s level)
+  const drawnNLines = new Set();
+  positioned.filter(s => s.l === 's').forEach(s => {
+    if (drawnNLines.has(s.n)) return;
+    drawnNLines.add(s.n);
+    const sy = toSvgY(s.y);
+    svgContent += `<line x1="${padLeft-8}" x2="${svgW-padRight}"
+      y1="${sy + BOX_H/2 + LABEL_H}" y2="${sy + BOX_H/2 + LABEL_H}"
+      stroke="rgba(148,163,184,0.12)" stroke-width="1" stroke-dasharray="3,4"/>`;
+    svgContent += `<text x="${padLeft-10}" y="${sy + BOX_H/2 + LABEL_H + 4}"
+      text-anchor="end" font-size="9" fill="rgba(148,163,184,0.5)"
+      font-family="monospace">n=${s.n}</text>`;
   });
 
-  orbitalHTML += `</div></div>`;
+  // Draw each subshell
+  positioned.forEach(sub => {
+    const cx = toSvgX(sub.x);
+    const sy = toSvgY(sub.y);
+    const totalW = subshellW(sub.l);
+    const startX = cx - totalW / 2;
+    const numBoxes = capacity[sub.l] / 2;
+
+    // Label above boxes
+    svgContent += `<text x="${cx}" y="${sy - 3}" text-anchor="middle"
+      font-size="10" fill="${sub.color}" font-weight="700" font-family="monospace">
+      ${sub.n}${sub.l}`;
+    // Superscript electron count — approximate with offset
+    svgContent += `<tspan font-size="8" dy="-3">${sub.count}</tspan></text>`;
+
+    // Boxes
+    for (let i = 0; i < numBoxes; i++) {
+      const bx = startX + i * (BOX_W + BOX_GAP);
+      const by = sy;
+      let electrons = 0;
+      if (sub.count > i) electrons++;
+      if (sub.count > numBoxes + i) electrons++;
+      const fill = electrons === 2 ? `color-mix(in srgb,${sub.color} 45%,var(--surface))`
+                 : electrons === 1 ? `color-mix(in srgb,${sub.color} 22%,var(--surface))`
+                 : 'var(--surface)';
+      const stroke = electrons > 0 ? sub.color : 'rgba(148,163,184,0.4)';
+      svgContent += `<rect x="${bx}" y="${by}" width="${BOX_W}" height="${BOX_H}"
+        rx="3" fill="${fill}" stroke="${stroke}" stroke-width="1.5"/>`;
+      // Arrow(s)
+      if (electrons >= 1) {
+        svgContent += `<text x="${bx+BOX_W/2}" y="${by+BOX_H-6}" text-anchor="middle"
+          font-size="13" fill="${sub.color}">↑</text>`;
+      }
+      if (electrons === 2) {
+        svgContent += `<text x="${bx+BOX_W/2}" y="${by+BOX_H-6}" text-anchor="middle"
+          font-size="13" fill="${sub.color}" transform="rotate(180,${bx+BOX_W/2},${by+BOX_H/2})">↑</text>`;
+      }
+    }
+  });
+
+  orbitalHTML = `<svg width="${svgW}" height="${svgH}" viewBox="0 0 ${svgW} ${svgH}"
+    xmlns="http://www.w3.org/2000/svg"
+    style="background:var(--surface2);border-radius:8px;border:1px solid var(--border);
+      display:block;max-width:100%;overflow:visible;">${svgContent}</svg>
+  <div style="display:flex;gap:14px;flex-wrap:wrap;margin-top:6px;font-size:0.68rem;">
+    <span style="color:#ef4444;">■ s orbital</span>
+    <span style="color:#3b82f6;">■ p orbital</span>
+    <span style="color:#f97316;">■ d orbital (lower than p of same n)</span>
+    <span style="color:#8b5cf6;">■ f orbital (lower than d of same n)</span>
+  </div>`;
 
   // Anomalous configuration note
   let anomNote = '';
