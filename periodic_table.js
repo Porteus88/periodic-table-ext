@@ -1251,6 +1251,43 @@ document.getElementById("themeToggle").addEventListener("click",()=>{
 // ─── CLOSE WINDOW ────────────────────────────────────────────────
 document.getElementById("closeBtn").addEventListener("click",()=>{ window.close(); });
 
+// ─── SCALE PERIODIC TABLE TO 80% OF SCREEN ──────────────────────
+// Computes the largest square cell that fits 18 cols × 9 rows
+// within 80vw × 80vh (accounting for all fixed chrome).
+// Sets --cell-size on :root so every element and label scales.
+
+function scalePT() {
+  const TARGET = 0.80;
+  const COLS = 18, ROWS = 9, GAP = 2;
+  const SIDE_W = document.querySelector('.side-panel') ? document.querySelector('.side-panel').offsetWidth : 50;
+
+  const screenW = window.innerWidth;
+  const screenH = window.innerHeight;
+
+  const header    = document.querySelector('.header');
+  const legend    = document.querySelector('.legend');
+  const trendsBar = document.querySelector('.trends-bar');
+  const accordion = document.getElementById('toolsAccordion');
+
+  const chromeH =
+    (header    ? header.offsetHeight    : 32) +
+    (legend    ? legend.offsetHeight    : 24) +
+    (trendsBar ? trendsBar.offsetHeight : 36) +
+    (accordion && accordion.style.display !== 'none' ? accordion.offsetHeight : 0) +
+    12; // table-area top padding
+
+  const availW = screenW * TARGET - SIDE_W - 18;
+  const availH = screenH * TARGET - chromeH;
+
+  const cellFromW = (availW - (COLS - 1) * GAP) / COLS;
+  // Rows: 7 element rows + 1 section-gap (~10% cell) + 1 lan/act row = ~8.1 effective
+  const cellFromH = (availH - (ROWS - 1) * GAP) / 8.1;
+
+  const cell = Math.max(16, Math.min(cellFromW, cellFromH));
+  document.documentElement.style.setProperty('--cell-size', cell.toFixed(1) + 'px');
+  document.documentElement.style.setProperty('--cell-gap',  GAP + 'px');
+}
+
 // ─── INIT ────────────────────────────────────────────────────────
 buildGrid();
 buildIonsChart();
@@ -1260,6 +1297,12 @@ buildKaChart();
 buildRedoxChart();
 buildKspChart();
 buildIndicatorsChart();
+
+// Scale table to 80% of screen, then re-scale on every resize
+requestAnimationFrame(() => {
+  scalePT();
+  window.addEventListener('resize', scalePT);
+});
 
 // Side chart buttons
 document.getElementById("btnIons").addEventListener("click", () => openPanel("ionsOverlay"));
