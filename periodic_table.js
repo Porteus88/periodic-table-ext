@@ -3748,3 +3748,260 @@ toolsAccordion.querySelectorAll('.tools-acc-btn').forEach(btn => {
   });
 });
 
+
+// ═══════════════════════════════════════════════════════════════════
+// ── EXTRA INFO — Physical Properties (Z=1–30) ─────────────────────
+// ═══════════════════════════════════════════════════════════════════
+
+// Data embedded from elements_cards_v3.json / elements_hover_v3.json
+const EI_DATA = {"1":{"z":1,"sym":"H","mp":-259.16,"bp":-252.879,"dens":8.988e-5,"state":"gas","group":1,"period":1,"block":"s"},"2":{"z":2,"sym":"He","mp":null,"bp":-268.928,"dens":1.785e-4,"state":"gas","group":18,"period":1,"block":"s"},"3":{"z":3,"sym":"Li","mp":180.5,"bp":1342,"dens":0.534,"state":"solid","group":1,"period":2,"block":"s"},"4":{"z":4,"sym":"Be","mp":1287,"bp":2742,"dens":1.85,"state":"solid","group":2,"period":2,"block":"s"},"5":{"z":5,"sym":"B","mp":2076,"bp":4200,"dens":2.34,"state":"solid","group":13,"period":2,"block":"p"},"6":{"z":6,"sym":"C","mp":null,"bp":4300,"dens":2.267,"state":"solid","group":14,"period":2,"block":"p"},"7":{"z":7,"sym":"N","mp":-210.0,"bp":-195.795,"dens":1.2506e-3,"state":"gas","group":15,"period":2,"block":"p"},"8":{"z":8,"sym":"O","mp":-218.79,"bp":-182.962,"dens":1.429e-3,"state":"gas","group":16,"period":2,"block":"p"},"9":{"z":9,"sym":"F","mp":-219.67,"bp":-188.12,"dens":1.696e-3,"state":"gas","group":17,"period":2,"block":"p"},"10":{"z":10,"sym":"Ne","mp":-248.59,"bp":-246.046,"dens":9.002e-4,"state":"gas","group":18,"period":2,"block":"p"},"11":{"z":11,"sym":"Na","mp":97.794,"bp":882.94,"dens":0.968,"state":"solid","group":1,"period":3,"block":"s"},"12":{"z":12,"sym":"Mg","mp":650,"bp":1090,"dens":1.738,"state":"solid","group":2,"period":3,"block":"s"},"13":{"z":13,"sym":"Al","mp":660.32,"bp":2519,"dens":2.7,"state":"solid","group":13,"period":3,"block":"p"},"14":{"z":14,"sym":"Si","mp":1414,"bp":3265,"dens":2.329,"state":"solid","group":14,"period":3,"block":"p"},"15":{"z":15,"sym":"P","mp":44.15,"bp":280,"dens":1.823,"state":"solid","group":15,"period":3,"block":"p"},"16":{"z":16,"sym":"S","mp":115,"bp":444.6,"dens":2.07,"state":"solid","group":16,"period":3,"block":"p"},"17":{"z":17,"sym":"Cl","mp":-102,"bp":-34.04,"dens":3.214e-3,"state":"gas","group":17,"period":3,"block":"p"},"18":{"z":18,"sym":"Ar","mp":-189,"bp":-186,"dens":1.784e-3,"state":"gas","group":18,"period":3,"block":"p"},"19":{"z":19,"sym":"K","mp":63.65,"bp":760,"dens":0.89,"state":"solid","group":1,"period":4,"block":"s"},"20":{"z":20,"sym":"Ca","mp":842,"bp":1484,"dens":1.55,"state":"solid","group":2,"period":4,"block":"s"},"21":{"z":21,"sym":"Sc","mp":1541,"bp":2836,"dens":2.99,"state":"solid","group":3,"period":4,"block":"d"},"22":{"z":22,"sym":"Ti","mp":1668,"bp":3287,"dens":4.506,"state":"solid","group":4,"period":4,"block":"d"},"23":{"z":23,"sym":"V","mp":1910,"bp":3407,"dens":6.11,"state":"solid","group":5,"period":4,"block":"d"},"24":{"z":24,"sym":"Cr","mp":1907,"bp":2671,"dens":7.19,"state":"solid","group":6,"period":4,"block":"d"},"25":{"z":25,"sym":"Mn","mp":1246,"bp":2061,"dens":7.21,"state":"solid","group":7,"period":4,"block":"d"},"26":{"z":26,"sym":"Fe","mp":1538,"bp":2862,"dens":7.874,"state":"solid","group":8,"period":4,"block":"d"},"27":{"z":27,"sym":"Co","mp":1495,"bp":2927,"dens":8.9,"state":"solid","group":9,"period":4,"block":"d"},"28":{"z":28,"sym":"Ni","mp":1455,"bp":2913,"dens":8.908,"state":"solid","group":10,"period":4,"block":"d"},"29":{"z":29,"sym":"Cu","mp":1084.62,"bp":2562,"dens":8.96,"state":"solid","group":11,"period":4,"block":"d"},"30":{"z":30,"sym":"Zn","mp":419.53,"bp":907,"dens":7.134,"state":"solid","group":12,"period":4,"block":"d"}};
+
+// Map ELEMENTS array into a quick lookup by Z for name + category colour
+const EI_ELMAP = {};
+ELEMENTS.forEach(e => { EI_ELMAP[e.z] = e; });
+
+// State → colour
+const EI_STATE_COL = { solid:'#22c55e', gas:'#38bdf8', liquid:'#f97316', unknown:'#94a3b8' };
+
+// Block → background tint (matches main table category colours approximately)
+const EI_BLOCK_BG = { s:'rgba(239,68,68,0.28)', p:'rgba(34,197,94,0.22)', d:'rgba(59,130,246,0.22)', f:'rgba(139,92,246,0.22)' };
+
+function eiFmt(val, unit='', decimals=2) {
+  if (val === null || val === undefined) return '—';
+  const n = Number(val);
+  if (Math.abs(n) < 0.01 && n !== 0) return n.toExponential(2) + (unit ? ' ' + unit : '');
+  return n.toFixed(decimals) + (unit ? ' ' + unit : '');
+}
+
+// ── Build EI grid ────────────────────────────────────────────────
+let eiBuilt = false;
+let eiSelected = null;
+
+function buildEIGrid() {
+  if (eiBuilt) return;
+  eiBuilt = true;
+
+  const grid = document.getElementById('eiGrid');
+  grid.innerHTML = '';
+
+  // Same layout as main table: 18 cols × 9 rows
+  // Row 8 = section gap, rows 8-9 = lan/act series (cols 4-18)
+  // We only have data for periods 1-4 (rows 1-4) so rows 5-7 are dimmed empties
+
+  // Build position map from ELEMENTS
+  const posMap = {};
+  ELEMENTS.forEach(e => { posMap[`${e.row},${e.col}`] = e; });
+
+  for (let r = 1; r <= 9; r++) {
+    // Section gap row
+    if (r === 8) {
+      const gap = document.createElement('div');
+      gap.className = 'ei-sect-gap';
+      grid.appendChild(gap);
+      continue;
+    }
+
+    for (let c = 1; c <= 18; c++) {
+      const mainEl = posMap[`${r},${c}`];
+
+      // Lanthanide/Actinide placeholder rows (rows 6-7, cols 4-17 in main table are gaps)
+      // In our layout row 8=lan row, row 9=act row
+      if ((r === 8 || r === 9) && c === 1) {
+        // series label cell (cols 1-3)
+        const lbl = document.createElement('div');
+        lbl.className = 'ei-series-label';
+        lbl.style.gridColumn = '1 / 4';
+        lbl.style.gridRow = String(r + 1); // shift for gap row
+        lbl.textContent = r === 8 ? '* Lan' : '** Act';
+        grid.appendChild(lbl);
+        // fill cols 4-18 with dim empties
+        for (let cc = 4; cc <= 18; cc++) {
+          const em = document.createElement('div');
+          em.className = 'ei-cell no-data';
+          em.style.background = 'var(--surface2)';
+          grid.appendChild(em);
+        }
+        break; // inner loop done for this row
+      }
+
+      if (!mainEl) {
+        // Empty grid position (lanthanide/actinide gap in rows 6-7)
+        const em = document.createElement('div');
+        if (r >= 6 && c >= 4 && c <= 17) {
+          em.className = 'ei-cell no-data gap-block';
+          em.style.fontSize = '0.38em';
+          em.textContent = r === 6 ? '* Lan' : '** Act';
+        } else {
+          em.className = 'ei-gap';
+        }
+        grid.appendChild(em);
+        continue;
+      }
+
+      const z = mainEl.z;
+      const ei = EI_DATA[z];
+      const hasData = !!ei;
+      const stateDot = hasData ? EI_STATE_COL[ei.state] || '#94a3b8' : 'transparent';
+      const bgColor = hasData ? (EI_BLOCK_BG[ei.block] || 'var(--surface2)') : 'var(--surface2)';
+
+      const cell = document.createElement('div');
+      cell.className = 'ei-cell ' + (hasData ? 'has-data' : 'no-data');
+      cell.style.background = bgColor;
+      cell.style.gridRow = r <= 7 ? r : r + 1; // shift for gap row
+      cell.dataset.z = z;
+
+      // State dot
+      const dot = document.createElement('div');
+      dot.className = 'ei-state-dot';
+      dot.style.background = stateDot;
+      cell.appendChild(dot);
+
+      // Atomic number
+      const zEl = document.createElement('div');
+      zEl.className = 'ei-z';
+      zEl.textContent = z;
+      cell.appendChild(zEl);
+
+      // Symbol
+      const sym = document.createElement('div');
+      sym.className = 'ei-sym';
+      sym.textContent = mainEl.sym;
+      cell.appendChild(sym);
+
+      if (hasData) {
+        // Melting point
+        const mp = document.createElement('div');
+        mp.className = 'ei-mp';
+        mp.textContent = ei.mp !== null ? ei.mp + '°' : '—';
+        cell.appendChild(mp);
+
+        // Boiling point
+        const bp = document.createElement('div');
+        bp.className = 'ei-bp';
+        bp.textContent = ei.bp + '°';
+        cell.appendChild(bp);
+
+        // Density
+        const dn = document.createElement('div');
+        dn.className = 'ei-dens';
+        const densVal = ei.dens < 0.01 ? ei.dens.toExponential(1) : ei.dens.toFixed(ei.dens < 1 ? 3 : 2);
+        dn.textContent = densVal;
+        cell.appendChild(dn);
+
+        cell.addEventListener('click', () => showEIDetail(z));
+      }
+
+      grid.appendChild(cell);
+    }
+  }
+}
+
+// ── Detail panel ─────────────────────────────────────────────────
+function showEIDetail(z) {
+  const ei = EI_DATA[z];
+  const mainEl = EI_ELMAP[z];
+  if (!ei || !mainEl) return;
+
+  // Highlight selected cell
+  document.querySelectorAll('.ei-cell.selected').forEach(c => c.classList.remove('selected'));
+  const sel = document.querySelector(`.ei-cell[data-z="${z}"]`);
+  if (sel) sel.classList.add('selected');
+  eiSelected = z;
+
+  document.getElementById('eiDetailEmpty').style.display = 'none';
+  const content = document.getElementById('eiDetailContent');
+  content.style.display = 'block';
+
+  const stateCol = EI_STATE_COL[ei.state] || '#94a3b8';
+  const blockCol = {s:'#ef4444', p:'#22c55e', d:'#3b82f6', f:'#8b5cf6'}[ei.block] || '#94a3b8';
+  const symColor = `color-mix(in srgb,${stateCol} 60%,var(--text))`;
+
+  const mpStr  = ei.mp !== null ? ei.mp + ' °C' : '— (sublimes/decomposes)';
+  const bpStr  = ei.bp + ' °C';
+  const densStr = ei.dens < 0.01
+    ? ei.dens.toExponential(3) + ' g/cm³'
+    : ei.dens.toFixed(ei.dens < 1 ? 4 : 3) + ' g/cm³';
+
+  // Fahrenheit conversions
+  const toF = c => c !== null ? ((c * 9/5) + 32).toFixed(1) + ' °F' : '—';
+  const mpF = toF(ei.mp);
+  const bpF = toF(ei.bp);
+
+  content.innerHTML = `
+    <div class="ei-detail-hero">
+      <div class="ei-detail-sym" style="color:${symColor};">${mainEl.sym}</div>
+      <div class="ei-detail-meta">
+        <div class="ei-detail-name">${mainEl.name}</div>
+        <div class="ei-detail-z">Z = ${z} &nbsp;·&nbsp; ${mainEl.mass}</div>
+        <div class="ei-detail-badges" style="margin-top:5px;">
+          <span class="ei-badge" style="color:${stateCol};border-color:${stateCol};
+            background:color-mix(in srgb,${stateCol} 15%,var(--surface2));">
+            ${ei.state}
+          </span>
+          <span class="ei-badge" style="color:${blockCol};border-color:${blockCol};
+            background:color-mix(in srgb,${blockCol} 15%,var(--surface2));">
+            ${ei.block}-block
+          </span>
+          <span class="ei-badge" style="color:var(--text-muted);border-color:var(--border);
+            background:var(--surface2);">
+            Grp ${ei.group} · Per ${ei.period}
+          </span>
+        </div>
+      </div>
+    </div>
+
+    <div class="ei-prop-grid">
+      <div class="ei-prop" style="border-left:3px solid #f97316;grid-column:1/-1;">
+        <div class="ei-prop-label" style="color:#f97316;">🌡 Melting Point</div>
+        <div class="ei-prop-val">${mpStr}</div>
+        <div class="ei-prop-unit">${mpF}</div>
+      </div>
+      <div class="ei-prop" style="border-left:3px solid #38bdf8;grid-column:1/-1;">
+        <div class="ei-prop-label" style="color:#38bdf8;">💧 Boiling Point</div>
+        <div class="ei-prop-val">${bpStr}</div>
+        <div class="ei-prop-unit">${bpF}</div>
+      </div>
+      <div class="ei-prop" style="border-left:3px solid #a78bfa;grid-column:1/-1;">
+        <div class="ei-prop-label" style="color:#a78bfa;">⚖ Density (STP)</div>
+        <div class="ei-prop-val">${densStr}</div>
+        <div class="ei-prop-unit">${ei.state === 'gas' ? 'at 0°C, 1 atm' : 'at room temp'}</div>
+      </div>
+    </div>
+
+    <div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px;">
+      <div style="font-family:'Space Mono',monospace;font-size:0.52rem;color:var(--text-muted);
+        letter-spacing:1px;text-transform:uppercase;margin-bottom:6px;">⚡ Quick Facts</div>
+      <div style="font-size:0.72rem;line-height:1.8;color:var(--text);">
+        <div>Block: <strong style="color:${blockCol};">${ei.block.toUpperCase()}-block</strong></div>
+        <div>Standard state: <strong style="color:${stateCol};">${ei.state.charAt(0).toUpperCase()+ei.state.slice(1)}</strong> at 25°C</div>
+        ${ei.mp !== null && ei.bp !== null
+          ? `<div>Liquid range: <strong>${(ei.bp - ei.mp).toFixed(1)} °C</strong></div>`
+          : ''}
+        <div>Group: <strong>${ei.group}</strong> &nbsp; Period: <strong>${ei.period}</strong></div>
+        <div>Config: <strong style="font-family:'Space Mono',monospace;font-size:0.65em;">${mainEl.config}</strong></div>
+      </div>
+    </div>
+
+    <div class="ei-caption">
+      Source: NIST WebBook / elements_cards_v3.json
+    </div>
+  `;
+}
+
+// ── Open / Close wiring ──────────────────────────────────────────
+document.getElementById('btnExtraInfo').addEventListener('click', () => {
+  buildEIGrid();
+  document.getElementById('eiOverlay').classList.add('open');
+});
+
+document.getElementById('eiClose').addEventListener('click', () => {
+  document.getElementById('eiOverlay').classList.remove('open');
+});
+
+// Keyboard close
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') {
+    document.getElementById('eiOverlay').classList.remove('open');
+  }
+});
+

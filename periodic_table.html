@@ -936,6 +936,119 @@
   .org-extra-btn:hover{filter:brightness(1.2);transform:translateY(-1px);
     box-shadow:0 3px 10px rgba(0,0,0,0.3);}
 
+
+  /* ── EXTRA INFO OVERLAY ── */
+  .ei-overlay{display:none;position:fixed;inset:0;z-index:500;
+    background:var(--bg);flex-direction:column;overflow:hidden;}
+  .ei-overlay.open{display:flex;}
+
+  .ei-header{display:flex;align-items:center;justify-content:space-between;
+    padding:8px 18px;background:var(--surface);border-bottom:1px solid var(--border);
+    flex-shrink:0;}
+  .ei-header h2{font-family:'Syne',sans-serif;font-size:1.05rem;font-weight:800;
+    background:linear-gradient(135deg,#22c55e,#38bdf8);
+    -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
+  .ei-header-right{display:flex;align-items:center;gap:10px;}
+  .ei-legend{display:flex;gap:12px;align-items:center;font-size:0.6rem;
+    font-family:'Space Mono',monospace;color:var(--text-muted);}
+  .ei-legend-item{display:flex;align-items:center;gap:4px;}
+  .ei-legend-dot{width:8px;height:8px;border-radius:50%;}
+  .ei-close{background:#ef4444;border:none;border-radius:7px;color:white;
+    cursor:pointer;font-size:0.8rem;font-weight:700;padding:5px 12px;
+    transition:background 0.2s;}
+  .ei-close:hover{background:#dc2626;}
+
+  .ei-body{flex:1;display:flex;gap:0;overflow:hidden;min-height:0;}
+
+  /* Left: periodic table grid */
+  .ei-grid-wrap{flex:1;padding:10px 10px 8px;overflow:auto;
+    display:flex;flex-direction:column;align-items:center;}
+
+  .ei-pt-grid{display:grid;grid-template-columns:repeat(18,1fr);
+    gap:3px;width:100%;max-width:1200px;}
+
+  /* Individual EI cell */
+  .ei-cell{
+    border-radius:5px;border:1px solid transparent;
+    cursor:pointer;position:relative;
+    display:flex;flex-direction:column;align-items:center;
+    justify-content:flex-start;
+    padding:3px 2px 2px;aspect-ratio:1;
+    transition:transform 0.12s,box-shadow 0.12s,border-color 0.12s;
+    overflow:hidden;min-width:0;
+  }
+  .ei-cell.has-data{cursor:pointer;}
+  .ei-cell.has-data:hover{
+    transform:scale(1.08);z-index:10;
+    border-color:rgba(255,255,255,0.7);
+    box-shadow:0 4px 20px rgba(0,0,0,0.6);
+  }
+  .ei-cell.no-data{opacity:0.35;cursor:default;}
+  .ei-cell.selected{border-color:#22c55e !important;
+    box-shadow:0 0 0 2px #22c55e,0 4px 16px rgba(34,197,94,0.4) !important;}
+
+  .ei-sym{font-family:'Atkinson Hyperlegible','Inter',sans-serif;
+    font-weight:800;line-height:1;color:rgba(255,255,255,0.95);font-size:1em;}
+  .light .ei-sym{color:rgba(0,0,0,0.85);}
+
+  .ei-z{font-family:'Space Mono',monospace;font-size:0.55em;
+    color:rgba(255,255,255,0.6);align-self:flex-start;line-height:1;}
+  .light .ei-z{color:rgba(0,0,0,0.45);}
+
+  /* Tiny data lines inside cell */
+  .ei-mp{font-family:'Space Mono',monospace;font-size:0.42em;
+    color:#f97316;line-height:1.2;margin-top:1px;width:100%;text-align:center;}
+  .ei-bp{font-family:'Space Mono',monospace;font-size:0.42em;
+    color:#38bdf8;line-height:1.2;width:100%;text-align:center;}
+  .ei-dens{font-family:'Space Mono',monospace;font-size:0.38em;
+    color:#a78bfa;line-height:1.2;width:100%;text-align:center;}
+
+  /* State badge dot in top-right corner */
+  .ei-state-dot{position:absolute;top:3px;right:3px;
+    width:5px;height:5px;border-radius:50%;}
+
+  /* Right: detail panel */
+  .ei-detail{width:280px;flex-shrink:0;background:var(--surface);
+    border-left:1px solid var(--border);padding:16px;overflow-y:auto;
+    display:flex;flex-direction:column;gap:10px;}
+  .ei-detail-empty{display:flex;flex-direction:column;align-items:center;
+    justify-content:center;height:100%;color:var(--text-muted);
+    font-family:'Space Mono',monospace;font-size:0.65rem;text-align:center;gap:8px;}
+
+  .ei-detail-hero{display:flex;align-items:center;gap:12px;
+    padding-bottom:10px;border-bottom:1px solid var(--border);}
+  .ei-detail-sym{font-family:'Atkinson Hyperlegible','Inter',sans-serif;
+    font-size:3rem;font-weight:800;line-height:1;}
+  .ei-detail-meta{display:flex;flex-direction:column;gap:2px;}
+  .ei-detail-name{font-size:0.95rem;font-weight:700;color:var(--text);}
+  .ei-detail-z{font-family:'Space Mono',monospace;font-size:0.6rem;
+    color:var(--text-muted);}
+  .ei-detail-badges{display:flex;gap:5px;flex-wrap:wrap;margin-top:4px;}
+  .ei-badge{font-size:0.55rem;font-weight:700;letter-spacing:0.5px;
+    text-transform:uppercase;padding:2px 7px;border-radius:999px;
+    border:1px solid;}
+
+  .ei-prop-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+  .ei-prop{background:var(--surface2);border:1px solid var(--border);
+    border-radius:8px;padding:8px 10px;}
+  .ei-prop-label{font-family:'Space Mono',monospace;font-size:0.52rem;
+    color:var(--text-muted);letter-spacing:1px;text-transform:uppercase;
+    margin-bottom:3px;}
+  .ei-prop-val{font-family:'Atkinson Hyperlegible','Inter',sans-serif;
+    font-size:0.88rem;font-weight:700;color:var(--text);}
+  .ei-prop-unit{font-size:0.62rem;color:var(--text-muted);font-weight:400;}
+
+  .ei-caption{font-size:0.62rem;color:var(--text-muted);font-style:italic;
+    text-align:center;margin-top:4px;}
+
+  /* Gap / empty cells in EI grid */
+  .ei-gap{background:transparent;}
+  .ei-sect-gap{grid-column:1/-1;height:5px;}
+  .ei-series-label{display:flex;align-items:flex-end;justify-content:flex-end;
+    padding-right:3px;padding-bottom:3px;
+    font-size:0.45em;font-weight:700;color:var(--text-muted);
+    text-transform:uppercase;letter-spacing:0.3px;}
+
 </style>
 </head>
 <body>
@@ -1059,6 +1172,51 @@
     background:color-mix(in srgb,var(--accent2) 18%,var(--surface2));
     border-color:color-mix(in srgb,var(--accent2) 50%,var(--border));
     color:var(--accent2);">🛠️ Tools</button>
+  <button class="trend-btn" id="btnExtraInfo" style="margin-left:6px;
+    background:color-mix(in srgb,#22c55e 18%,var(--surface2));
+    border-color:color-mix(in srgb,#22c55e 50%,var(--border));
+    color:#22c55e;">🔬 Extra Info</button>
+</div>
+
+
+<!-- EXTRA INFO OVERLAY -->
+<div class="ei-overlay" id="eiOverlay">
+  <div class="ei-header">
+    <h2>🔬 Extra Info — Physical Properties (Z = 1–30)</h2>
+    <div class="ei-header-right">
+      <div class="ei-legend">
+        <span class="ei-legend-item">
+          <span class="ei-legend-dot" style="background:#22c55e;"></span>solid
+        </span>
+        <span class="ei-legend-item">
+          <span class="ei-legend-dot" style="background:#38bdf8;"></span>gas
+        </span>
+        <span class="ei-legend-item">
+          <span class="ei-legend-dot" style="background:#f97316;"></span>liquid
+        </span>
+        <span style="margin-left:6px;">mp=<span style="color:#f97316;">orange</span>
+          &nbsp;bp=<span style="color:#38bdf8;">blue</span>
+          &nbsp;ρ=<span style="color:#a78bfa;">purple</span></span>
+      </div>
+      <button class="ei-close" id="eiClose">✕ Close</button>
+    </div>
+  </div>
+  <div class="ei-body">
+    <div class="ei-grid-wrap">
+      <div class="ei-pt-grid" id="eiGrid"></div>
+      <div class="ei-caption" style="margin-top:8px;max-width:1200px;width:100%;">
+        Data available for Z = 1–30 (periods 1–4). Elements without data shown dimmed.
+        Click any highlighted element for full property detail.
+      </div>
+    </div>
+    <div class="ei-detail" id="eiDetail">
+      <div class="ei-detail-empty" id="eiDetailEmpty">
+        <div style="font-size:2rem;">🔬</div>
+        <div>Click an element<br>to see details</div>
+      </div>
+      <div id="eiDetailContent" style="display:none;"></div>
+    </div>
+  </div>
 </div>
 
 <!-- ELEMENT MODAL -->
